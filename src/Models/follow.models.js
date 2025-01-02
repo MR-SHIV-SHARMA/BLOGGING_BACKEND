@@ -7,7 +7,7 @@ const followSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
-    followeingId: {
+    followingId: { // Corrected typo from followeingId to followingId
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,

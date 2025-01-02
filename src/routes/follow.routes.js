@@ -15,7 +15,7 @@ router.use(verifyJWT); // Protect all routes
 router.route("/").post(followUser);
 
 // Unfollow a user
-router.route("/unfollow").delete(unfollowUser);
+router.route("/unfollow").post(unfollowUser); // Changed from delete to post
 
 // Get followers of a user
 router.route("/followers/:userId").get(getFollowers);

@@ -5,7 +5,8 @@ import { apiResponse } from "../utils/apiResponse.js";
 
 // Follow a User
 const followUser = asyncHandler(async (req, res) => {
-  const { followerId, followingId } = req.body;
+  const { followingId } = req.body;
+  const followerId = req.user._id; // Use the ID of the currently logged-in user
 
   if (!followerId || !followingId) {
     throw new apiError(422, "Both follower ID and following ID are required.");
@@ -29,7 +30,8 @@ const followUser = asyncHandler(async (req, res) => {
 
 // Unfollow a User
 const unfollowUser = asyncHandler(async (req, res) => {
-  const { followerId, followingId } = req.body;
+  const { followingId } = req.body;
+  const followerId = req.user._id; // Use the ID of the currently logged-in user
 
   if (!followerId || !followingId) {
     throw new apiError(422, "Both follower ID and following ID are required.");
@@ -55,12 +57,21 @@ const getFollowers = asyncHandler(async (req, res) => {
   }
 
   const followers = await Follow.find({ followingId: userId }).populate(
-    "followerId"
+    "followerId",
+    "username fullname avatar"
   );
+
+  console.log("Followers data:", followers); // Debug logging
+
+  const response = followers.map((follow) => ({
+    followerId: follow.followerId._id,
+    followingId: follow.followingId,
+    follower: follow.followerId,
+  }));
 
   return res
     .status(200)
-    .json(new apiResponse(200, followers, "Followers retrieved successfully."));
+    .json(new apiResponse(200, response, "Followers retrieved successfully."));
 });
 
 // Get Following of a User
@@ -72,13 +83,20 @@ const getFollowing = asyncHandler(async (req, res) => {
   }
 
   const following = await Follow.find({ followerId: userId }).populate(
-    "followingId"
+    "followingId",
+    "username fullname avatar"
   );
+
+  const response = following.map((follow) => ({
+    followerId: follow.followerId,
+    followingId: follow.followingId._id,
+    following: follow.followingId,
+  }));
 
   return res
     .status(200)
     .json(
-      new apiResponse(200, following, "Following users retrieved successfully.")
+      new apiResponse(200, response, "Following users retrieved successfully.")
     );
 });
 

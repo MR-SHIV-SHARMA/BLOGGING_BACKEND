@@ -322,7 +322,7 @@ const getUserFollowProfile = asyncHandler(async (req, res) => {
       $lookup: {
         from: "follows",
         localField: "_id",
-        foreignField: "followeingId",
+        foreignField: "followingId",
         as: "followers",
       },
     },
@@ -344,7 +344,7 @@ const getUserFollowProfile = asyncHandler(async (req, res) => {
         },
         // Check if this user follows the current user
         isFollowedByCurrentUser: {
-          $in: [req.user?._id, "$following.followeingId"],
+          $in: [req.user?._id, "$following.followingId"],
         },
       },
     },
