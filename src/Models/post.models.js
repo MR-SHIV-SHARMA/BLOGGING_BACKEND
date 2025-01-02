@@ -4,7 +4,6 @@ const postSchema = new mongoose.Schema(
   {
     title: {
       type: "String",
-
       required: true,
       trim: true,
     },
@@ -29,9 +28,8 @@ const postSchema = new mongoose.Schema(
         ref: "Tag",
       },
     ],
-    coverImage: {
-      type: String,
-      default: null,
+    media: {
+      type: "String", // Change from ObjectId to String
     },
     likes: [
       {

@@ -12,17 +12,17 @@ const mediaSchema = new mongoose.Schema(
       required: true,
     },
     uploadedBy: {
-      type: mongoose.Schema.types.objectId,
+      type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
     },
     postId: {
-      type: mongoose.Schema.types.objectId,
+      type: mongoose.Schema.Types.ObjectId,
       ref: "Post",
       default: null,
     },
     commentId: {
-      type: mongoose.Schema.types.objectId,
+      type: mongoose.Schema.Types.ObjectId,
       ref: "Comment",
       default: null,
     },

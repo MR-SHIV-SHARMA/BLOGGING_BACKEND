@@ -32,10 +32,6 @@ const userSchema = new mongoose.Schema(
     coverImage: {
       type: String,
     },
-    bio: {
-      type: String,
-      maxlength: 150,
-    },
     role: {
       type: String,
       enum: ["admin", "reader", "author"],

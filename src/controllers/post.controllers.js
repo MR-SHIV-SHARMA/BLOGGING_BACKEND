@@ -3,6 +3,7 @@ import { apiError } from "../utils/apiError.js";
 import { apiResponse } from "../utils/apiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { uploadFileToCloudinary } from "../utils/cloudinary.js";
+import mongoose from "mongoose";
 
 // Create a new post
 const createPost = asyncHandler(async (req, res) => {
@@ -12,25 +13,22 @@ const createPost = asyncHandler(async (req, res) => {
     throw new apiError(422, "Title and content are required fields.");
   }
 
-  // Handle optional cover image upload
-  const coverImagePath = req.files?.coverImage?.[0]?.path;
-  let coverImageUrl = null;
+  // Handle optional media upload
+  const mediaPath = req.files?.media?.[0]?.path;
+  let mediaUrl = null;
 
-  if (coverImagePath) {
-    const uploadedImage = await uploadFileToCloudinary(coverImagePath);
+  if (mediaPath) {
+    const uploadedImage = await uploadFileToCloudinary(mediaPath);
     if (!uploadedImage) {
-      throw new apiError(
-        400,
-        "Failed to upload cover image. Please try again."
-      );
+      throw new apiError(400, "Failed to upload media. Please try again.");
     }
-    coverImageUrl = uploadedImage.url;
+    mediaUrl = uploadedImage.url;
   }
 
   const post = await Post.create({
     title,
     content,
-    coverImage: coverImageUrl,
+    media: mediaUrl,
     author: req.user._id, // Assuming user is authenticated and attached to req
   });
 
@@ -52,17 +50,20 @@ const updatePost = asyncHandler(async (req, res) => {
     throw new apiError(400, "Invalid post ID.");
   }
 
+  const post = await Post.findById(postId);
+
   const updates = {};
   if (title) updates.title = title;
   if (content) updates.content = content;
 
-  // Handle optional cover image update
-  if (req.files?.coverImage?.[0]?.path) {
+  // Handle optional media update
+  if (req.files?.media?.[0]?.path) {
     const uploadedImage = await uploadFileToCloudinary(
-      req.files.coverImage[0].path
+      req.files.media[0].path,
+      post.media
     );
     if (uploadedImage) {
-      updates.coverImage = uploadedImage.url;
+      updates.media = uploadedImage.url;
     }
   }
 

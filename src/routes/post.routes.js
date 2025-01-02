@@ -15,13 +15,13 @@ router.use(verifyJWT);
 
 router
   .route("/")
-  .post(upload.fields([{ name: "coverImage", maxCount: 1 }]), createPost)
+  .post(upload.fields([{ name: "media", maxCount: 1 }]), createPost)
   .get(getAllPosts);
 
 router
   .route("/:postId")
   .get(getPostById)
-  .patch(upload.fields([{ name: "coverImage", maxCount: 1 }]), updatePost)
+  .patch(upload.fields([{ name: "media", maxCount: 1 }]), updatePost)
   .delete(deletePostById);
 
 export default router;

@@ -24,9 +24,11 @@ const generateAccessTokensAndRefreshTokens = async (userId) => {
 // User Registration
 const registerUser = asyncHandler(async (req, res) => {
   const { username, fullname, email, password } = req.body;
-
-  // Validate required fields
-  if (!username || !fullname || !email || !password) {
+  if (
+    [username, fullname, email, password].some(
+      (fildes) => fildes?.trim() === ""
+    )
+  ) {
     throw new apiError(422, "Please fill in all the required fields");
   }
 
@@ -36,12 +38,14 @@ const registerUser = asyncHandler(async (req, res) => {
   });
 
   if (existedUser) {
-    throw new apiError(422, "Username or email already in use");
+    throw new apiError(
+      422,
+      "Username or email already in use, please try a different one"
+    );
   }
 
   const avatarLocalPath = req.files?.avatar[0]?.path;
   let coverImageLocalPath;
-
   if (
     req.files?.coverImage &&
     Array.isArray(req.files.coverImage) &&
@@ -89,7 +93,7 @@ const loginUser = asyncHandler(async (req, res) => {
   const { username, password, email } = req.body;
 
   if (!(username || email)) {
-    throw new apiError(422, "Username or email is required");
+    throw new apiError(422, "Username and email are required");
   }
 
   const user = await User.findOne({
@@ -101,12 +105,14 @@ const loginUser = asyncHandler(async (req, res) => {
   }
 
   const isPasswordValid = await user.isPasswordCorrect(password);
+
   if (!isPasswordValid) {
     throw new apiError(401, "Password is incorrect. Please try again");
   }
 
   const { accessToken, refreshToken } =
     await generateAccessTokensAndRefreshTokens(user._id);
+
   const loggedInUser = await User.findById(user._id).select(
     "-password -refreshToken"
   );
