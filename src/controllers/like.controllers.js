@@ -149,4 +149,42 @@ const getLikesForComment = asyncHandler(async (req, res) => {
     );
 });
 
-export { addLike, removeLike, getLikesForPost, getLikesForComment };
+// Get All Likes by a User
+const getUserLikes = asyncHandler(async (req, res) => {
+  const { userId } = req.params;
+
+  if (!userId) {
+    throw new apiError(400, "A valid userId is required.");
+  }
+
+  const likes = await Like.find({ userId }).populate([
+    { path: "postId", select: "title content" },
+    { path: "comment", select: "content" },
+  ]);
+
+  const posts = likes.filter((like) => like.postId).map((like) => like.postId);
+  const comments = likes
+    .filter((like) => like.comment)
+    .map((like) => like.comment);
+
+  const postCount = posts.length;
+  const commentCount = comments.length;
+
+  return res
+    .status(200)
+    .json(
+      new apiResponse(
+        200,
+        { posts, comments, postCount, commentCount },
+        "User likes retrieved successfully."
+      )
+    );
+});
+
+export {
+  addLike,
+  removeLike,
+  getLikesForPost,
+  getLikesForComment,
+  getUserLikes,
+};

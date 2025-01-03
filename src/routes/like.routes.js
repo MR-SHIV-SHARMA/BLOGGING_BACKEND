@@ -4,6 +4,7 @@ import {
   removeLike,
   getLikesForPost,
   getLikesForComment,
+  getUserLikes,
 } from "../controllers/like.controllers.js";
 import verifyJWT from "../middlewares/auth.middlewares.js";
 
@@ -24,5 +25,8 @@ router.route("/post/:postId").get(getLikesForPost);
 
 // Get likes for a comment
 router.route("/comment/:commentId").get(getLikesForComment);
+
+// Get All Likes by a User
+router.route("/user/:userId").get(getUserLikes);
 
 export default router;
