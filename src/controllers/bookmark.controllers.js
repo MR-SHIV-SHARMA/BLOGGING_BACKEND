@@ -5,21 +5,16 @@ import { apiResponse } from "../utils/apiResponse.js";
 
 // Create a Bookmark
 const createBookmark = asyncHandler(async (req, res) => {
-  const { userId, postId } = req.body;
+  const { name } = req.body;
+  const userId = req.user._id;
 
-  if (!userId || !postId) {
-    throw new apiError(422, "User ID and Post ID are required.");
-  }
-
-  const existingBookmark = await Bookmark.findOne({ userId, postId });
-
-  if (existingBookmark) {
-    throw new apiError(409, "This post is already bookmarked.");
+  if (!name) {
+    throw new apiError(422, "Name is required.");
   }
 
   const bookmark = await Bookmark.create({
     userId,
-    postId,
+    name,
   });
 
   return res
@@ -29,38 +24,70 @@ const createBookmark = asyncHandler(async (req, res) => {
 
 // Get All Bookmarks for a User
 const getAllBookmarks = asyncHandler(async (req, res) => {
-  const { userId } = req.params;
+  const userId = req.user._id;
 
-  if (!userId) {
-    throw new apiError(400, "User ID is required.");
-  }
-
-  const bookmarks = await Bookmark.find({ userId }).populate("postId");
+  const bookmarks = await Bookmark.find({ userId }).populate("posts");
 
   return res
     .status(200)
     .json(new apiResponse(200, bookmarks, "Bookmarks retrieved successfully."));
 });
 
-// Delete a Bookmark
-const deleteBookmark = asyncHandler(async (req, res) => {
-  const { userId, postId } = req.body;
+// Add a post to a bookmark
+const addPostToBookmark = asyncHandler(async (req, res) => {
+  const { bookmarkId } = req.params;
+  const { postId } = req.body;
 
-  if (!userId || !postId) {
-    throw new apiError(422, "User ID and Post ID are required.");
+  const bookmark = await Bookmark.findById(bookmarkId);
+  if (!bookmark) {
+    throw new apiError(404, "Bookmark not found.");
   }
 
-  const deletedBookmark = await Bookmark.findOneAndDelete({ userId, postId });
+  bookmark.posts.push(postId);
+  await bookmark.save();
+  return res
+    .status(200)
+    .json(
+      new apiResponse(200, bookmark, "Post added to bookmark successfully.")
+    );
+});
 
-  if (!deletedBookmark) {
+// Remove a post from a bookmark
+const removePostFromBookmark = asyncHandler(async (req, res) => {
+  const { bookmarkId, postId } = req.params;
+
+  const bookmark = await Bookmark.findById(bookmarkId);
+  if (!bookmark) {
+    throw new apiError(404, "Bookmark not found.");
+  }
+
+  bookmark.posts.pull(postId);
+  await bookmark.save();
+  return res
+    .status(200)
+    .json(
+      new apiResponse(200, bookmark, "Post removed from bookmark successfully.")
+    );
+});
+
+// Delete a bookmark by ID
+const deleteBookmarkById = asyncHandler(async (req, res) => {
+  const { bookmarkId } = req.params;
+
+  const bookmark = await Bookmark.findByIdAndDelete(bookmarkId);
+  if (!bookmark) {
     throw new apiError(404, "Bookmark not found.");
   }
 
   return res
     .status(200)
-    .json(
-      new apiResponse(200, deletedBookmark, "Bookmark deleted successfully.")
-    );
+    .json(new apiResponse(200, null, "Bookmark deleted successfully."));
 });
 
-export { createBookmark, getAllBookmarks, deleteBookmark };
+export {
+  createBookmark,
+  getAllBookmarks,
+  addPostToBookmark,
+  removePostFromBookmark,
+  deleteBookmarkById,
+};

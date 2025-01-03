@@ -7,11 +7,16 @@ const bookmarkSchema = new Schema(
       ref: "User",
       required: true,
     },
-    postId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Post",
+    name: {
+      type: String,
       required: true,
     },
+    posts: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Post",
+      },
+    ],
   },
   { timestamps: true }
 );
