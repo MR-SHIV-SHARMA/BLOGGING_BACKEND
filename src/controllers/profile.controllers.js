@@ -1,5 +1,4 @@
 import { Profile } from "../Models/profile.models.js";
-import { User } from "../Models/user.models.js";
 import { apiError } from "../utils/apiError.js";
 import { apiResponse } from "../utils/apiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";

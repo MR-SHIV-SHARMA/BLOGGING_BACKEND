@@ -15,20 +15,14 @@ const createPost = asyncHandler(async (req, res) => {
 
   // Handle optional media upload
   const mediaPath = req.files?.media?.[0]?.path;
-  let mediaUrl = null;
 
-  if (mediaPath) {
-    const uploadedImage = await uploadFileToCloudinary(mediaPath);
-    if (!uploadedImage) {
-      throw new apiError(400, "Failed to upload media. Please try again.");
-    }
-    mediaUrl = uploadedImage.url;
-  }
+  // Upload to Cloudinary
+  const media = mediaPath ? await uploadFileToCloudinary(mediaPath) : null;
 
   const post = await Post.create({
     title,
     content,
-    media: mediaUrl,
+    media: media?.url || undefined,
     author: req.user._id, // Assuming user is authenticated and attached to req
   });
 
