@@ -108,7 +108,8 @@ const getPostById = asyncHandler(async (req, res) => {
     .populate("author", "name email")
     .populate("categories", "name")
     .populate("tags", "name")
-    .populate("comments");
+    .populate("comments")
+    .populate("likes");
 
   if (!post) {
     throw new apiError(404, "Post not found.");

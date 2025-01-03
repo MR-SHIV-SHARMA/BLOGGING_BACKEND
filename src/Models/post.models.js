@@ -29,12 +29,12 @@ const postSchema = new mongoose.Schema(
       },
     ],
     media: {
-      type: "String", // Change from ObjectId to String
+      type: "String",
     },
     likes: [
       {
         type: mongoose.Schema.Types.ObjectId,
-        ref: "User",
+        ref: "Like",
       },
     ],
     comments: [
