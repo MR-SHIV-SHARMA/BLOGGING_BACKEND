@@ -66,6 +66,79 @@ const getProfile = asyncHandler(async (req, res) => {
     .json(new apiResponse(200, profile, "Profile fetched successfully."));
 });
 
+// Update User Avatar
+const updateUserAvatar = asyncHandler(async (req, res) => {
+  const avatarLocalPath = req.file?.path;
+
+  if (!avatarLocalPath) {
+    throw new apiError(404, "Avatar file is missing");
+  }
+
+  const user = await Profile.findById(req.profile._id);
+
+  if (!user) {
+    throw new apiError(404, "User not found");
+  }
+
+  const oldAvatarUrl = user.avatar;
+
+  const newAvatar = await uploadFileToCloudinary(avatarLocalPath, oldAvatarUrl);
+
+  if (!newAvatar.url) {
+    throw new apiError(400, "Error while uploading avatar");
+  }
+
+  const updatedUser = await Profile.findByIdAndUpdate(
+    req.profile._id,
+    { $set: { avatar: newAvatar.url } },
+    { new: true }
+  );
+
+  return res
+    .status(200)
+    .json(
+      new apiResponse(200, updatedUser, "Avatar image updated successfully")
+    );
+});
+
+// Update User Cover Image
+const updateUserCoverImage = asyncHandler(async (req, res) => {
+  const coverImageLocalPath = req.file?.path;
+
+  if (!coverImageLocalPath) {
+    throw new apiError(404, "Cover image file is missing");
+  }
+
+  const user = await Profile.findById(req.profile._id);
+
+  if (!user) {
+    throw new apiError(404, "User not found");
+  }
+
+  const oldCoverImageUrl = user.coverImage;
+
+  const newCoverImage = await uploadFileToCloudinary(
+    coverImageLocalPath,
+    oldCoverImageUrl
+  );
+
+  if (!newCoverImage.url) {
+    throw new apiError(400, "Error while uploading cover image");
+  }
+
+  const updatedUser = await Profile.findByIdAndUpdate(
+    req.profile._id,
+    { $set: { coverImage: newCoverImage.url } },
+    { new: true }
+  );
+
+  return res
+    .status(200)
+    .json(
+      new apiResponse(200, updatedUser, "Cover image updated successfully")
+    );
+});
+
 // Update a profile
 const updateProfile = asyncHandler(async (req, res) => {
   const { fullname, location, hobbies, bio, link, socialMedia } = req.body;
@@ -116,83 +189,10 @@ const updateProfile = asyncHandler(async (req, res) => {
   );
 });
 
-// Update User Avatar
-const updateUserAvatar = asyncHandler(async (req, res) => {
-  const avatarLocalPath = req.file?.path;
-
-  if (!avatarLocalPath) {
-    throw new apiError(404, "Avatar file is missing");
-  }
-
-  const user = await Profile.findOne({ user: req.user._id });
-
-  if (!user) {
-    throw new apiError(404, "User not found");
-  }
-
-  const oldAvatarUrl = user.avatar;
-
-  const newAvatar = await uploadFileToCloudinary(avatarLocalPath, oldAvatarUrl);
-
-  if (!newAvatar.url) {
-    throw new apiError(400, "Error while uploading avatar");
-  }
-
-  const updatedUser = await Profile.findOneAndUpdate(
-    { user: req.user._id },
-    { $set: { avatar: newAvatar.url } },
-    { new: true }
-  );
-
-  return res
-    .status(200)
-    .json(
-      new apiResponse(200, updatedUser, "Avatar image updated successfully")
-    );
-});
-
-// Update User Cover Image
-const updateUserCoverImage = asyncHandler(async (req, res) => {
-  const coverImageLocalPath = req.file?.path;
-
-  if (!coverImageLocalPath) {
-    throw new apiError(404, "Cover image file is missing");
-  }
-
-  const user = await Profile.findById(req.profile._id);
-
-  if (!user) {
-    throw new apiError(404, "User not found");
-  }
-
-  const oldCoverImageUrl = user.coverImage;
-
-  const newCoverImage = await uploadFileToCloudinary(
-    coverImageLocalPath,
-    oldCoverImageUrl
-  );
-
-  if (!newCoverImage.url) {
-    throw new apiError(400, "Error while uploading cover image");
-  }
-
-  const updatedUser = await Profile.findByIdAndUpdate(
-    req.profile._id,
-    { $set: { coverImage: newCoverImage.url } },
-    { new: true }
-  );
-
-  return res
-    .status(200)
-    .json(
-      new apiResponse(200, updatedUser, "Cover image updated successfully")
-    );
-});
-
 export {
   createProfile,
   getProfile,
-  updateProfile,
   updateUserAvatar,
   updateUserCoverImage,
+  updateProfile,
 };
