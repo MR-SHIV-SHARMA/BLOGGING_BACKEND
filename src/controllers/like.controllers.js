@@ -20,6 +20,14 @@ const addLike = asyncHandler(async (req, res) => {
     throw new apiError(422, "A valid userId and postId are required.");
   }
 
+  // Check if the like already exists
+  const existingLike = await Like.findOne({ userId, postId });
+  if (existingLike) {
+    return res
+      .status(400)
+      .json(new apiResponse(400, null, "You have already liked this post."));
+  }
+
   const likeData = { userId, postId };
 
   console.log("Like Data:", likeData);
