@@ -1,41 +1,58 @@
 import { Like } from "../Models/like.models.js";
 import { Post } from "../Models/post.models.js";
+import { Comment } from "../Models/comment.models.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { apiError } from "../utils/apiError.js";
 import { apiResponse } from "../utils/apiResponse.js";
 
-// Add a Like to a Post
+// Add a Like to a Post or Comment
 const addLike = asyncHandler(async (req, res) => {
   const userId = req.user._id;
-  const { postId } = req.params;
+  const { postId, commentId } = req.params;
 
   console.log("Request Body:", req.body);
   console.log("Request Params:", req.params);
   console.log("User ID:", userId);
 
-  if (!userId || !postId) {
+  if (!userId || (!postId && !commentId)) {
     console.error("Validation Error: Missing required fields");
     console.log("userId:", userId);
     console.log("postId:", postId);
-    throw new apiError(422, "A valid userId and postId are required.");
+    console.log("commentId:", commentId);
+    throw new apiError(
+      422,
+      "A valid userId and either postId or commentId are required."
+    );
   }
 
-  // Check if the like already exists
-  const existingLike = await Like.findOne({ userId, postId });
+  let existingLike;
+  if (postId) {
+    existingLike = await Like.findOne({ userId, postId });
+  } else if (commentId) {
+    existingLike = await Like.findOne({ userId, comment: commentId });
+  }
+
   if (existingLike) {
     return res
       .status(400)
-      .json(new apiResponse(400, null, "You have already liked this post."));
+      .json(new apiResponse(400, null, "You have already liked this item."));
   }
 
-  const likeData = { userId, postId };
+  const likeData = { userId };
+  if (postId) likeData.postId = postId;
+  if (commentId) likeData.comment = commentId;
 
   console.log("Like Data:", likeData);
 
   const like = await Like.create(likeData);
 
-  // Update the post to include the like reference
-  await Post.findByIdAndUpdate(postId, { $push: { likes: like._id } });
+  if (postId) {
+    // Update the post to include the like reference
+    await Post.findByIdAndUpdate(postId, { $push: { likes: like._id } });
+  } else if (commentId) {
+    // Update the comment to include the like reference
+    await Comment.findByIdAndUpdate(commentId, { $push: { likes: userId } });
+  }
 
   return res
     .status(201)
@@ -45,27 +62,40 @@ const addLike = asyncHandler(async (req, res) => {
 // Remove a Like
 const removeLike = asyncHandler(async (req, res) => {
   const userId = req.user._id;
-  const { postId } = req.params;
+  const { postId, commentId } = req.params;
 
   console.log("Request Params:", req.params);
   console.log("User ID:", userId);
 
-  if (!userId || !postId) {
+  if (!userId || (!postId && !commentId)) {
     console.error("Validation Error: Missing required fields");
     console.log("userId:", userId);
     console.log("postId:", postId);
-    throw new apiError(422, "A valid userId and postId are required.");
+    console.log("commentId:", commentId);
+    throw new apiError(
+      422,
+      "A valid userId and either postId or commentId are required."
+    );
   }
 
-  // Find the like to be removed
-  const like = await Like.findOneAndDelete({ userId, postId });
+  let like;
+  if (postId) {
+    like = await Like.findOneAndDelete({ userId, postId });
+  } else if (commentId) {
+    like = await Like.findOneAndDelete({ userId, comment: commentId });
+  }
 
   if (!like) {
     throw new apiError(404, "Like not found.");
   }
 
-  // Update the post to remove the like reference
-  await Post.findByIdAndUpdate(postId, { $pull: { likes: like._id } });
+  if (postId) {
+    // Update the post to remove the like reference
+    await Post.findByIdAndUpdate(postId, { $pull: { likes: like._id } });
+  } else if (commentId) {
+    // Update the comment to remove the like reference
+    await Comment.findByIdAndUpdate(commentId, { $pull: { likes: userId } });
+  }
 
   return res
     .status(200)
@@ -94,4 +124,29 @@ const getLikesForPost = asyncHandler(async (req, res) => {
     );
 });
 
-export { addLike, removeLike, getLikesForPost };
+// Get Likes for a Comment
+const getLikesForComment = asyncHandler(async (req, res) => {
+  const { commentId } = req.params;
+
+  if (!commentId) {
+    throw new apiError(400, "A valid commentId is required.");
+  }
+
+  const likes = await Like.find({ comment: commentId }).populate(
+    "userId",
+    "name"
+  );
+  const likeCount = await Like.countDocuments({ commentId });
+
+  return res
+    .status(200)
+    .json(
+      new apiResponse(
+        200,
+        { likes, likeCount },
+        "Likes retrieved successfully."
+      )
+    );
+});
+
+export { addLike, removeLike, getLikesForPost, getLikesForComment };
