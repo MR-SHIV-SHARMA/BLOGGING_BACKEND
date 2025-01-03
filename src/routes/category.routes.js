@@ -5,6 +5,8 @@ import {
   getCategoryById,
   updateCategory,
   deleteCategory,
+  getPostsByCategory,
+  insertPredefinedCategories,
 } from "../controllers/category.controllers.js";
 import verifyJWT from "../middlewares/auth.middlewares.js";
 
@@ -13,18 +15,25 @@ const router = express.Router();
 router.use(verifyJWT); // Protect all routes
 
 // Create a category
-router.route("/").post(createCategory);
+router.route("/").post(createCategory).get(getAllCategories);
 
 // Get all categories
-router.route("/").get(getAllCategories);
 
 // Get category by ID
-router.route("/:categoryId").get(getCategoryById);
+router
+  .route("/:categoryId")
+  .get(getCategoryById)
+  .put(updateCategory)
+  .delete(deleteCategory);
 
 // Update a category
-router.route("/:categoryId").put(updateCategory);
 
 // Delete a category
-router.route("/:categoryId").delete(deleteCategory);
+
+// Get posts by category
+router.route("/:categoryId/posts").get(getPostsByCategory);
+
+// Insert predefined categories
+router.route("/insert-predefined").post(insertPredefinedCategories);
 
 export default router;

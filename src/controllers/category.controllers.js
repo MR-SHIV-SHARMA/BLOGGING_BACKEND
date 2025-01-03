@@ -5,7 +5,7 @@ import { apiResponse } from "../utils/apiResponse.js";
 
 // Create a Category
 const createCategory = asyncHandler(async (req, res) => {
-  const { name, description } = req.body;
+  const { name } = req.body;
 
   if (!name?.trim()) {
     throw new apiError(422, "Category name is required.");
@@ -18,7 +18,6 @@ const createCategory = asyncHandler(async (req, res) => {
 
   const category = await Category.create({
     name,
-    description,
   });
 
   return res
@@ -59,7 +58,7 @@ const getCategoryById = asyncHandler(async (req, res) => {
 // Update a Category
 const updateCategory = asyncHandler(async (req, res) => {
   const { categoryId } = req.params;
-  const { name, description } = req.body;
+  const { name } = req.body;
 
   if (!name?.trim()) {
     throw new apiError(422, "Category name is required.");
@@ -67,7 +66,7 @@ const updateCategory = asyncHandler(async (req, res) => {
 
   const updatedCategory = await Category.findByIdAndUpdate(
     categoryId,
-    { name, description },
+    { name },
     { new: true }
   );
 
@@ -103,10 +102,73 @@ const deleteCategory = asyncHandler(async (req, res) => {
     );
 });
 
+// Get Posts by Category
+const getPostsByCategory = asyncHandler(async (req, res) => {
+  const { categoryId } = req.params;
+
+  if (!categoryId) {
+    throw new apiError(400, "Category ID is required.");
+  }
+
+  const category = await Category.findById(categoryId).populate("posts");
+
+  if (!category) {
+    throw new apiError(404, "Category not found.");
+  }
+
+  return res
+    .status(200)
+    .json(
+      new apiResponse(200, category.posts, "Posts retrieved successfully.")
+    );
+});
+
+// Insert predefined categories
+const insertPredefinedCategories = asyncHandler(async (req, res) => {
+  const predefinedCategories = [
+    "Technology",
+    "Health",
+    "Travel",
+    "Food",
+    "Lifestyle",
+    "Education",
+    "Finance",
+    "Entertainment",
+    "Sports",
+    "Fashion",
+    "Science",
+    "Politics",
+    "Business",
+    "Art",
+    "Music",
+    "Books",
+    "Movies",
+    "Gaming",
+    "Photography",
+    "DIY",
+  ];
+
+  const categories = await Category.insertMany(
+    predefinedCategories.map((name) => ({ name }))
+  );
+
+  return res
+    .status(201)
+    .json(
+      new apiResponse(
+        201,
+        categories,
+        "Predefined categories inserted successfully."
+      )
+    );
+});
+
 export {
   createCategory,
   getAllCategories,
   getCategoryById,
   updateCategory,
   deleteCategory,
+  getPostsByCategory,
+  insertPredefinedCategories,
 };
