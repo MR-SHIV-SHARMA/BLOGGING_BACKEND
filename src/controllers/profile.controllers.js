@@ -1,62 +1,64 @@
 import { Profile } from "../Models/profile.models.js";
 import { User } from "../Models/user.models.js";
-import { Post } from "../Models/post.models.js";
 import { apiError } from "../utils/apiError.js";
 import { apiResponse } from "../utils/apiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { uploadFileToCloudinary } from "../utils/cloudinary.js";
+import mongoose from "mongoose";
 
-// Create or update a profile
-const createOrUpdateProfile = asyncHandler(async (req, res) => {
-  const { fullName, location, hobise, bio, link, socialmidiya } = req.body;
-  const userId = req.user._id; // Assuming user info is available in req.user
+const createProfile = asyncHandler(async (req, res) => {
+  const { fullname, location, hobbies, bio, link, socialMedia } = req.body;
 
-  const avatarPath = req.files?.avatar?.[0]?.path;
-  const coverImagePath = req.files?.coverImage?.[0]?.path;
+  if (!fullname || !location || !hobbies || !bio || !link || !socialMedia) {
+    throw new apiError(422, "All fields are required.");
+  }
 
-  const avatarUpload = avatarPath
-    ? await uploadFileToCloudinary(avatarPath)
+  // Process uploaded files
+  const avatarLocalPath = req.files?.avatar?.[0]?.path;
+  const coverImageLocalPath = req.files?.coverImage?.[0]?.path;
+
+  // Upload to Cloudinary
+  const avatar = avatarLocalPath
+    ? await uploadFileToCloudinary(avatarLocalPath)
     : null;
-  const coverImageUpload = coverImagePath
-    ? await uploadFileToCloudinary(coverImagePath)
+  const coverImage = coverImageLocalPath
+    ? await uploadFileToCloudinary(coverImageLocalPath)
     : null;
 
-  const profileData = {
-    fullName,
+  const profile = await Profile.create({
+    user: req.user._id, // Reference to User's ObjectId
+    username: req.user.username, // Ensure this is a string
+    fullname,
     location,
-    hobise,
+    hobbies,
     bio,
     link,
-    socialmidiya,
-    avatar: avatarUpload?.url,
-    coverImage: coverImageUpload?.url,
-  };
-
-  // Find existing profile or create a new one
-  const profile = await Profile.findOneAndUpdate(
-    { username: userId },
-    { $set: profileData },
-    { new: true, upsert: true }
-  );
+    socialMedia,
+    avatar: avatar?.url || undefined,
+    coverImage: coverImage?.url || undefined,
+  });
 
   return res
     .status(201)
-    .json(
-      new apiResponse(201, profile, "Profile created/updated successfully.")
-    );
+    .json(new apiResponse(201, profile, "Profile created successfully."));
 });
 
-// Get profile by username
 const getProfile = asyncHandler(async (req, res) => {
   const { username } = req.params;
 
+  console.log(`Fetching profile for username: ${username}`);
+  console.log(`Type of username: ${typeof username}`);
+  console.log(`Length of username: ${username.length}`);
+
+  // Fetch profile using the username field
   const profile = await Profile.findOne({ username })
-    .populate("username", "username email")
-    .populate("savedPost", "title")
-    .populate("follower", "username")
-    .populate("following", "username");
+    .populate("user", "username email")
+    .populate("savedPost", "name")
+    .populate("follower", "name")
+    .populate("following");
 
   if (!profile) {
+    console.error(`Profile not found for username: ${username}`);
     throw new apiError(404, "Profile not found.");
   }
 
@@ -65,35 +67,4 @@ const getProfile = asyncHandler(async (req, res) => {
     .json(new apiResponse(200, profile, "Profile fetched successfully."));
 });
 
-// Get all profiles
-const getAllProfiles = asyncHandler(async (req, res) => {
-  const profiles = await Profile.find()
-    .populate("username", "username email")
-    .populate("follower", "username")
-    .populate("following", "username");
-
-  if (!profiles.length) {
-    throw new apiError(404, "No profiles found.");
-  }
-
-  return res
-    .status(200)
-    .json(new apiResponse(200, profiles, "All profiles fetched successfully."));
-});
-
-// Delete a profile
-const deleteProfile = asyncHandler(async (req, res) => {
-  const userId = req.user._id; // Assuming user info is available in req.user
-
-  const profile = await Profile.findOneAndDelete({ username: userId });
-
-  if (!profile) {
-    throw new apiError(404, "Profile not found.");
-  }
-
-  return res
-    .status(200)
-    .json(new apiResponse(200, profile, "Profile deleted successfully."));
-});
-
-export { createOrUpdateProfile, getProfile, getAllProfiles, deleteProfile };
+export { createProfile, getProfile };

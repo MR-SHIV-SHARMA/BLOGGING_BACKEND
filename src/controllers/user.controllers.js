@@ -3,7 +3,7 @@ import { User } from "../Models/user.models.js";
 import { apiError } from "../utils/apiError.js";
 import { apiResponse } from "../utils/apiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
-import { uploadFileToCloudinary } from "../utils/cloudinary.js";
+import { Profile } from "../Models/profile.models.js";
 
 // Generate Access and Refresh Tokens
 const generateAccessTokensAndRefreshTokens = async (userId) => {
@@ -23,12 +23,8 @@ const generateAccessTokensAndRefreshTokens = async (userId) => {
 
 // User Registration
 const registerUser = asyncHandler(async (req, res) => {
-  const { username, fullname, email, password } = req.body;
-  if (
-    [username, fullname, email, password].some(
-      (fildes) => fildes?.trim() === ""
-    )
-  ) {
+  const { username, email, password } = req.body;
+  if ([username, email, password].some((fildes) => fildes?.trim() === "")) {
     throw new apiError(422, "Please fill in all the required fields");
   }
 
@@ -44,34 +40,10 @@ const registerUser = asyncHandler(async (req, res) => {
     );
   }
 
-  const avatarLocalPath = req.files?.avatar[0]?.path;
-  let coverImageLocalPath;
-  if (
-    req.files?.coverImage &&
-    Array.isArray(req.files.coverImage) &&
-    req.files.coverImage.length > 0
-  ) {
-    coverImageLocalPath = req.files.coverImage[0]?.path;
-  }
-
-  if (!avatarLocalPath) {
-    throw new apiError(400, "Please select a valid image file for your avatar");
-  }
-
-  const avatar = await uploadFileToCloudinary(avatarLocalPath);
-  const coverImage = await uploadFileToCloudinary(coverImageLocalPath);
-
-  if (!avatar) {
-    throw new apiError(400, "Failed to upload avatar file. Please try again");
-  }
-
   // Create new user
   const user = await User.create({
-    fullname,
-    avatar: avatar.url,
-    coverImage: coverImage?.url || "",
     email,
-    username: username.toLowerCase(),
+    username,
     password,
   });
 
@@ -225,85 +197,56 @@ const changeCurrentPassword = asyncHandler(async (req, res) => {
 
 // Get Current User
 const getCurrentUser = asyncHandler(async (req, res) => {
+  const user = await User.findById(req.user._id)
+    .populate({
+      path: "fullname",
+      select: "fullname",
+      model: "Profile",
+    })
+    .populate({
+      path: "avatar",
+      select: "avatar",
+      model: "Profile",
+    })
+    .populate({
+      path: "coverImage",
+      select: "coverImage",
+      model: "Profile",
+    });
+
+  // Fetch the profile data
+  const profile = await Profile.findOne({ user: req.user._id });
+
+  // Extract the URLs from the populated fields
+  const userData = {
+    ...user.toObject(),
+    avatar: profile?.avatar || null,
+    coverImage: profile?.coverImage || null,
+    fullname: profile?.fullname || null,
+  };
+
   return res
     .status(200)
-    .json(new apiResponse(200, req.user, "Current user fetched successfully"));
+    .json(new apiResponse(200, userData, "Current user fetched successfully"));
 });
 
 // Update Account Details
 const updateAccountDetails = asyncHandler(async (req, res) => {
-  const { fullname, email } = req.body;
+  const { username, email } = req.body;
 
-  if (!(fullname && email)) {
+  if (!(username && email)) {
     throw new apiError(400, "All fields are required");
   }
 
   const user = await User.findByIdAndUpdate(
     req.user?._id,
-    { $set: { fullname, email } },
+    { $set: { username, email } },
     { new: true }
   ).select("-password");
 
   return res
     .status(200)
     .json(new apiResponse(200, user, "Account details updated successfully"));
-});
-
-// Update User Avatar
-const updateUserAvatar = asyncHandler(async (req, res) => {
-  const avatarLocalPath = req.file?.path;
-
-  if (!avatarLocalPath) {
-    throw new apiError(404, "Avatar file is missing");
-  }
-
-  const user = await User.findById(req.user._id);
-  if (!user) {
-    throw new apiError(404, "User not found");
-  }
-
-  const oldAvatarUrl = user.avatar;
-  const newAvatar = await uploadFileToCloudinary(avatarLocalPath, oldAvatarUrl);
-
-  if (!newAvatar.url) {
-    throw new apiError(400, "Error while uploading avatar");
-  }
-
-  const updatedUser = await User.findByIdAndUpdate(
-    req.user._id,
-    { $set: { avatar: newAvatar.url } },
-    { new: true }
-  ).select("-password");
-
-  return res
-    .status(200)
-    .json(
-      new apiResponse(200, updatedUser, "Avatar image updated successfully")
-    );
-});
-
-// Update User Cover Image
-const updateUserCoverImage = asyncHandler(async (req, res) => {
-  const coverImageLocalPath = req.file?.path;
-
-  if (!coverImageLocalPath) {
-    throw new apiError(404, "Cover image file is missing");
-  }
-
-  const coverImage = await uploadFileToCloudinary(coverImageLocalPath);
-  if (!coverImage.url) {
-    throw new apiError(400, "Error while uploading cover image");
-  }
-
-  const user = await User.findByIdAndUpdate(
-    req.user._id,
-    { $set: { coverImage: coverImage.url } },
-    { new: true }
-  ).select("-password");
-
-  return res
-    .status(200)
-    .json(new apiResponse(200, user, "Cover image updated successfully"));
 });
 
 // Get User Follow Profile
@@ -350,14 +293,11 @@ const getUserFollowProfile = asyncHandler(async (req, res) => {
     },
     {
       $project: {
-        fullname: 1,
         username: 1,
         followersCount: 1,
         followingCount: 1,
         isFollow: 1,
         isFollowedByCurrentUser: 1,
-        avatar: 1,
-        coverImage: 1,
         email: 1,
       },
     },
@@ -387,7 +327,5 @@ export {
   changeCurrentPassword,
   getCurrentUser,
   updateAccountDetails,
-  updateUserAvatar,
-  updateUserCoverImage,
   getUserFollowProfile,
 };

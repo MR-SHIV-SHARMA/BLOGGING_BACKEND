@@ -20,17 +20,16 @@ const userSchema = new mongoose.Schema(
       trim: true,
     },
     fullname: {
-      type: String,
-      required: true,
-      trim: true,
-      index: true,
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Profile",
     },
     avatar: {
-      type: String,
-      required: true,
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Profile",
     },
     coverImage: {
-      type: String,
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Profile",
     },
     role: {
       type: String,
@@ -64,7 +63,6 @@ userSchema.methods.generateAccessToken = function () {
       _id: this._id,
       email: this.email,
       username: this.username,
-      fullname: this.fullname,
     },
     process.env.ACCESS_TOKEN_SECRET,
     {

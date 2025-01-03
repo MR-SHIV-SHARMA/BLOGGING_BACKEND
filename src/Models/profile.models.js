@@ -2,61 +2,34 @@ import mongoose from "mongoose";
 
 const profileSchema = new mongoose.Schema(
   {
+    user: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
     username: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
+      type: String,
+      required: true,
+      unique: true,
     },
-    fullName: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
+    fullname: {
+      type: String,
+      required: true,
     },
-    email: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-    },
-    avatar: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-    },
-    coverImage: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-    },
-    savedPost: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Post",
-    },
-    follower: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Follow",
-    },
-    following: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Follow",
-    },
-    totalView: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Post",
-    },
-    location: {
-      type: "String",
-    },
-    hobise: {
-      type: "String",
-    },
-    bio: {
-      type: "String",
-    },
-    link: {
-      type: "String",
-    },
-    socialmidiya: [
-      {
-        type: "String",
-      },
-    ],
+    location: String,
+    hobbies: String,
+    bio: String,
+    link: String,
+    socialMedia: String,
+    avatar: String,
+    coverImage: String,
+    savedPost: [{ type: mongoose.Schema.Types.ObjectId, ref: "Post" }],
+    follower: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
+    following: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
   },
   { timestamps: true }
 );
 
-export const Profile = mongoose.model("Profile", profileSchema);
+const Profile = mongoose.model("Profile", profileSchema);
+
+export { Profile };
