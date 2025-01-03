@@ -6,9 +6,19 @@ import { apiResponse } from "../utils/apiResponse.js";
 
 // Add a Comment
 const addComment = asyncHandler(async (req, res) => {
-  const { postId, author, content } = req.body;
+  const { postId } = req.params;
+  const { content } = req.body;
+  const author = req.user._id;
+
+  console.log("Request Params:", req.params);
+  console.log("Request Body:", req.body);
+  console.log("User ID:", author);
 
   if (!postId || !author || !content?.trim()) {
+    console.error("Validation Error: Missing required fields");
+    console.log("postId:", postId);
+    console.log("author:", author);
+    console.log("content:", content);
     throw new apiError(422, "Post ID, author, and content are required.");
   }
 
@@ -22,6 +32,9 @@ const addComment = asyncHandler(async (req, res) => {
     author,
     content,
   });
+
+  // Update the post to include the comment reference
+  await Post.findByIdAndUpdate(postId, { $push: { comments: comment._id } });
 
   return res
     .status(201)
@@ -37,10 +50,17 @@ const getCommentsForPost = asyncHandler(async (req, res) => {
   }
 
   const comments = await Comment.find({ postId }).populate("author", "name");
+  const commentCount = await Comment.countDocuments({ postId });
 
   return res
     .status(200)
-    .json(new apiResponse(200, comments, "Comments retrieved successfully."));
+    .json(
+      new apiResponse(
+        200,
+        { comments, commentCount },
+        "Comments retrieved successfully."
+      )
+    );
 });
 
 // Update a Comment

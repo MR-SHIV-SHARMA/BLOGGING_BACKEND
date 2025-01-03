@@ -12,11 +12,11 @@ const router = express.Router();
 
 router.use(verifyJWT); // Protect all routes
 
-// Add a comment
-router.route("/").post(addComment);
+// Add a comment to a post
+router.route("/post/:postId").post(addComment);
 
 // Get comments for a post
-router.route("/post/:postId").get(getCommentsForPost);
+router.route("/post/comments/:postId").get(getCommentsForPost);
 
 // Update a comment
 router.route("/:commentId").put(updateComment);
