@@ -10,6 +10,7 @@ import mongoose from "mongoose";
 // Create a new post
 const createPost = asyncHandler(async (req, res) => {
   const { title, content, categoryId, tagId } = req.body;
+  const userId = req.user._id;
 
   if (!title?.trim() || !content?.trim()) {
     throw new apiError(422, "Title, content, and category are required.");
@@ -25,7 +26,7 @@ const createPost = asyncHandler(async (req, res) => {
     title,
     content,
     media: media?.url || undefined,
-    author: req.user._id, // Assuming user is authenticated and attached to req
+    userId, // Assuming user is authenticated and attached to req
     categories: [categoryId], // Correctly assign categoryId to categories array
     tags: [tagId],
   });
@@ -92,7 +93,7 @@ const getAllPosts = asyncHandler(async (req, res) => {
   }
 
   const posts = await Post.find(filter)
-    .populate("author", "name email")
+    .populate("userId", "username fullname avatar")
     .populate("categories", "name")
     .populate("tags", "name")
     .skip((page - 1) * limit)
@@ -113,7 +114,7 @@ const getPostById = asyncHandler(async (req, res) => {
   }
 
   const post = await Post.findById(postId)
-    .populate("author", "name email")
+    .populate("userId", "username fullname avatar")
     .populate("categories", "name")
     .populate("tags", "name")
     .populate("comments")

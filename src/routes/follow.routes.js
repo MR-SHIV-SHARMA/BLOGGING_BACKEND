@@ -12,10 +12,10 @@ const router = express.Router();
 router.use(verifyJWT); // Protect all routes
 
 // Follow a user
-router.route("/").post(followUser);
+router.route("/follow/:followUserId").post(followUser);
 
 // Unfollow a user
-router.route("/unfollow").post(unfollowUser); // Changed from delete to post
+router.route("/unfollow/:followUserId").post(unfollowUser);
 
 // Get followers of a user
 router.route("/followers/:userId").get(getFollowers);

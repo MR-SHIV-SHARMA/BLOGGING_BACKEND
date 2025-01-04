@@ -3,23 +3,24 @@ import { Post } from "../Models/post.models.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { apiError } from "../utils/apiError.js";
 import { apiResponse } from "../utils/apiResponse.js";
+import { sendNotification } from "../controllers/notification.controllers.js"; // Import sendNotification function
 
 // Add a Comment
 const addComment = asyncHandler(async (req, res) => {
   const { postId } = req.params;
   const { content } = req.body;
-  const author = req.user._id;
+  const userId = req.user._id;
 
   console.log("Request Params:", req.params);
   console.log("Request Body:", req.body);
-  console.log("User ID:", author);
+  console.log("User ID:", userId);
 
-  if (!postId || !author || !content?.trim()) {
+  if (!postId || !userId || !content?.trim()) {
     console.error("Validation Error: Missing required fields");
     console.log("postId:", postId);
-    console.log("author:", author);
+    console.log("userId:", userId);
     console.log("content:", content);
-    throw new apiError(422, "Post ID, author, and content are required.");
+    throw new apiError(422, "Post ID, userId, and content are required.");
   }
 
   const postExists = await Post.findById(postId);
@@ -29,12 +30,26 @@ const addComment = asyncHandler(async (req, res) => {
 
   const comment = await Comment.create({
     postId,
-    author,
+    userId,
     content,
   });
 
   // Update the post to include the comment reference
   await Post.findByIdAndUpdate(postId, { $push: { comments: comment._id } });
+
+  // Retrieve the post with the userId field populated
+  const post = await Post.findById(postId).populate("userId");
+  if (!post) {
+    throw new apiError(404, "Post not found.");
+  }
+
+  console.log("Post owner ID:", post.userId); // Debug logging
+  // Send notification to the post owner
+  await sendNotification(
+    post.userId._id,
+    `${req.user.username} commented on your post`,
+    "comment"
+  );
 
   return res
     .status(201)
@@ -49,7 +64,7 @@ const getCommentsForPost = asyncHandler(async (req, res) => {
     throw new apiError(400, "Post ID is required.");
   }
 
-  const comments = await Comment.find({ postId }).populate("author", "name");
+  const comments = await Comment.find({ postId }).populate("userId", "name");
   const commentCount = await Comment.countDocuments({ postId });
 
   return res
@@ -112,16 +127,13 @@ const deleteComment = asyncHandler(async (req, res) => {
 
 // Get All Comments by a User
 const getCommentsByUser = asyncHandler(async (req, res) => {
-  const { authorId } = req.params;
+  const { userId } = req.params;
 
-  if (!authorId) {
-    throw new apiError(400, "Author ID is required.");
+  if (!userId) {
+    throw new apiError(400, "User ID is required.");
   }
 
-  const comments = await Comment.find({ author: authorId }).populate(
-    "postId",
-    "title"
-  );
+  const comments = await Comment.find({ userId }).populate("postId", "title");
 
   return res
     .status(200)
