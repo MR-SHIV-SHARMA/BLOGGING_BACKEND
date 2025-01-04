@@ -4,21 +4,14 @@ import { Comment } from "../Models/comment.models.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { apiError } from "../utils/apiError.js";
 import { apiResponse } from "../utils/apiResponse.js";
+import { sendNotification } from "../controllers/notification.controllers.js"; // Import sendNotification function
 
 // Add a Like to a Post or Comment
 const addLike = asyncHandler(async (req, res) => {
   const userId = req.user._id;
   const { postId, commentId } = req.params;
 
-  console.log("Request Body:", req.body);
-  console.log("Request Params:", req.params);
-  console.log("User ID:", userId);
-
   if (!userId || (!postId && !commentId)) {
-    console.error("Validation Error: Missing required fields");
-    console.log("userId:", userId);
-    console.log("postId:", postId);
-    console.log("commentId:", commentId);
     throw new apiError(
       422,
       "A valid userId and either postId or commentId are required."
@@ -42,16 +35,38 @@ const addLike = asyncHandler(async (req, res) => {
   if (postId) likeData.postId = postId;
   if (commentId) likeData.comment = commentId;
 
-  console.log("Like Data:", likeData);
-
   const like = await Like.create(likeData);
 
   if (postId) {
+    // Retrieve the post with the userId field populated
+    const post = await Post.findById(postId).populate("userId");
+    if (!post) {
+      throw new apiError(404, "Post not found.");
+    }
     // Update the post to include the like reference
     await Post.findByIdAndUpdate(postId, { $push: { likes: like._id } });
+    console.log("Post owner ID:", post.userId); // Debug logging
+    // Send notification to the post owner
+    await sendNotification(
+      post.userId._id,
+      `${req.user.username} liked your post`,
+      "like"
+    );
   } else if (commentId) {
+    // Retrieve the comment with the userId field populated
+    const comment = await Comment.findById(commentId).populate("userId");
+    if (!comment) {
+      throw new apiError(404, "Comment not found.");
+    }
     // Update the comment to include the like reference
     await Comment.findByIdAndUpdate(commentId, { $push: { likes: userId } });
+    console.log("Comment owner ID:", comment.userId); // Debug logging
+    // Send notification to the comment owner
+    await sendNotification(
+      comment.userId._id,
+      `${req.user.username} liked your comment`,
+      "like"
+    );
   }
 
   return res

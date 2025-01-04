@@ -130,6 +130,25 @@ const deleteAllNotifications = asyncHandler(async (req, res) => {
     );
 });
 
+// Function to send notification
+const sendNotification = async (userId, message, type) => {
+  console.log("sendNotification called with:", { userId, message, type }); // Debug logging
+
+  if (!userId || !message || !type) {
+    throw new apiError(422, "User ID, message, and type are required.");
+  }
+
+  const notification = await Notification.create({
+    userId,
+    message,
+    type,
+  });
+
+  console.log("Notification created:", notification); // Debug logging
+
+  return notification;
+};
+
 export {
   createNotification,
   getNotificationsByUser,
@@ -137,4 +156,5 @@ export {
   markAllAsRead,
   deleteNotification,
   deleteAllNotifications,
+  sendNotification,
 };
