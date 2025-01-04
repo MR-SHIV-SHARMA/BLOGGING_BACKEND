@@ -11,17 +11,17 @@ import verifyJWT from "../middlewares/auth.middlewares.js";
 
 const router = express.Router();
 
-router.use(verifyJWT);
-
 router
   .route("/")
-  .post(upload.fields([{ name: "media", maxCount: 1 }]), createPost)
-  .get(getAllPosts);
+  .post(verifyJWT, upload.fields([{ name: "media", maxCount: 1 }]), createPost);
+
+router.route("/").get(getAllPosts);
 
 router
   .route("/:postId")
-  .get(getPostById)
-  .patch(upload.fields([{ name: "media", maxCount: 1 }]), updatePost)
-  .delete(deletePostById);
+  .patch(verifyJWT, upload.fields([{ name: "media", maxCount: 1 }]), updatePost)
+  .delete(verifyJWT, deletePostById);
+
+router.route("/:postId").get(getPostById);
 
 export default router;
