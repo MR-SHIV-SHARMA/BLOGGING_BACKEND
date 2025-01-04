@@ -5,11 +5,15 @@ const tagSchema = new mongoose.Schema(
     name: {
       type: String,
       required: true,
-      unique: true,
-      trim: true,
     },
+    posts: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Post",
+      },
+    ],
   },
-  { timeseries: true }
+  { timestamps: true }
 );
 
 export const Tag = mongoose.model("Tag", tagSchema);

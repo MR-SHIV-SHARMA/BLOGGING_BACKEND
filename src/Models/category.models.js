@@ -8,6 +8,12 @@ const categorySchema = new mongoose.Schema(
       unique: true,
       trim: true,
     },
+    posts: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Post",
+      },
+    ],
   },
   { timeseries: true }
 );

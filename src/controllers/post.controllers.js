@@ -1,4 +1,6 @@
 import { Post } from "../Models/post.models.js";
+import { Category } from "../Models/category.models.js";
+import { Tag } from "../Models/tag.models.js";
 import { apiError } from "../utils/apiError.js";
 import { apiResponse } from "../utils/apiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
@@ -7,10 +9,10 @@ import mongoose from "mongoose";
 
 // Create a new post
 const createPost = asyncHandler(async (req, res) => {
-  const { title, content } = req.body;
+  const { title, content, categoryId, tagId } = req.body;
 
-  if (!title || !content) {
-    throw new apiError(422, "Title and content are required fields.");
+  if (!title?.trim() || !content?.trim()) {
+    throw new apiError(422, "Title, content, and category are required.");
   }
 
   // Handle optional media upload
@@ -24,7 +26,13 @@ const createPost = asyncHandler(async (req, res) => {
     content,
     media: media?.url || undefined,
     author: req.user._id, // Assuming user is authenticated and attached to req
+    categories: [categoryId], // Correctly assign categoryId to categories array
+    tags: [tagId],
   });
+
+  // Add the post to the category's posts array
+  await Category.findByIdAndUpdate(categoryId, { $push: { posts: post._id } });
+  await Tag.findByIdAndUpdate(tagId, { $push: { posts: post._id } });
 
   return res
     .status(201)
