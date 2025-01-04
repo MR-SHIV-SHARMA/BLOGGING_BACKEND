@@ -2,6 +2,7 @@ import { Follow } from "../Models/follow.models.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { apiError } from "../utils/apiError.js";
 import { apiResponse } from "../utils/apiResponse.js";
+import { sendNotification } from "../controllers/notification.controllers.js"; // Import sendNotification function
 
 // Follow a User
 const followUser = asyncHandler(async (req, res) => {
@@ -22,6 +23,13 @@ const followUser = asyncHandler(async (req, res) => {
     followerId,
     followingId,
   });
+
+  // Send notification to the followed user
+  await sendNotification(
+    followingId,
+    `${req.user.username} started following you`,
+    "follow"
+  );
 
   return res
     .status(201)
