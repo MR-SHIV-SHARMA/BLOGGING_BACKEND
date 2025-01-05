@@ -297,8 +297,7 @@ const superAdminCreateAdmin = async (req, res) => {
         .json({ message: "Admin with this email already exists" });
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const newAdmin = new Admin({ email, password: hashedPassword, role });
+    const newAdmin = new Admin({ email, password, role });
     await newAdmin.save();
     await ActivityLog.create({
       adminId: req.admin._id,
@@ -341,16 +340,6 @@ const superAdminDeleteAdmin = async (req, res) => {
   }
 };
 
-// Get activity logs
-const getActivityLogs = async (req, res) => {
-  try {
-    const logs = await ActivityLog.find().populate("adminId", "email");
-    res.status(200).json(logs);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
-
 // Get all admins
 const getAllAdmins = async (req, res) => {
   try {
@@ -361,16 +350,26 @@ const getAllAdmins = async (req, res) => {
   }
 };
 
+// Get activity logs
+const getActivityLogs = async (req, res) => {
+  try {
+    const logs = await ActivityLog.find().populate("adminId", "email");
+    res.status(200).json(logs);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
 export {
   registerSuperAdmin,
   login,
   logout,
-  resetPassword,
-  superAdminCreateAdmin,
-  superAdminDeleteAdmin,
-  getActivityLogs,
-  getAllAdmins,
   refreshAccessToken,
+  resetPassword,
   requestPasswordReset,
   resetPasswordWithToken,
+  superAdminCreateAdmin,
+  superAdminDeleteAdmin,
+  getAllAdmins,
+  getActivityLogs,
 };
