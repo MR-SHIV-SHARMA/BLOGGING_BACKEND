@@ -167,7 +167,13 @@ const logout = asyncHandler(async (req, res) => {
     .status(200)
     .clearCookie("accessToken", options)
     .clearCookie("refreshToken", options)
-    .json(new apiResponse(200, {}, `${role} logged out successfully`));
+    .json(new apiResponse(200, {
+      admin: {
+        id: req.admin._id,
+        email: req.admin.email,
+        role: req.admin.role,
+      }
+    }, `${role} logged out successfully`));
 });
 
 // Refresh Access Token
