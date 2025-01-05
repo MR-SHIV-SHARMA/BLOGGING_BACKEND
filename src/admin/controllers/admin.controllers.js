@@ -118,10 +118,13 @@ const login = asyncHandler(async (req, res) => {
   const role = admin.role === "super-admin" ? "Super Admin" : "Admin";
   console.log(`${role} logged in successfully:`, loggedInAdmin);
 
-  await ActivityLog.create({
+  const loginLog = await ActivityLog.create({
     adminId: admin._id,
     action: `${role} logged in`,
+    loginTime: new Date(),
   });
+
+  req.session.loginLogId = loginLog._id; // Store the login log ID in the session
 
   return res
     .status(200)
@@ -158,6 +161,12 @@ const logout = asyncHandler(async (req, res) => {
   const role = req.admin.role === "super-admin" ? "Super Admin" : "Admin";
   console.log(`${role} logged out successfully:`, req.admin._id);
 
+  const loginLog = await ActivityLog.findById(req.session.loginLogId);
+  if (loginLog) {
+    loginLog.logoutTime = new Date();
+    await loginLog.save();
+  }
+
   await ActivityLog.create({
     adminId: req.admin._id,
     action: `${role} logged out`,
@@ -167,13 +176,19 @@ const logout = asyncHandler(async (req, res) => {
     .status(200)
     .clearCookie("accessToken", options)
     .clearCookie("refreshToken", options)
-    .json(new apiResponse(200, {
-      admin: {
-        id: req.admin._id,
-        email: req.admin.email,
-        role: req.admin.role,
-      }
-    }, `${role} logged out successfully`));
+    .json(
+      new apiResponse(
+        200,
+        {
+          admin: {
+            id: req.admin._id,
+            email: req.admin.email,
+            role: req.admin.role,
+          },
+        },
+        `${role} logged out successfully`
+      )
+    );
 });
 
 // Refresh Access Token

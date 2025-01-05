@@ -1,4 +1,5 @@
 import express from "express";
+import session from "express-session";
 import {
   login,
   logout,
@@ -21,6 +22,15 @@ import { adminRateLimiter } from "../middleware/rateLimiter.js";
 import authenticateAdmin from "../middleware/authMiddleware.js";
 
 const router = express.Router();
+
+router.use(
+  session({
+    secret: process.env.SESSION_SECRET,
+    resave: false,
+    saveUninitialized: true,
+    cookie: { secure: true },
+  })
+);
 
 // Register a super admin
 router.post("/super-admin/register", adminRateLimiter, registerSuperAdmin);

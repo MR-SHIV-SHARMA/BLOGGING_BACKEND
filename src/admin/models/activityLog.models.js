@@ -10,6 +10,8 @@ const activityLogSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
+  loginTime: Date,
+  logoutTime: Date,
   timestamp: {
     type: Date,
     default: Date.now,
