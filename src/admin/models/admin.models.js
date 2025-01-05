@@ -17,6 +17,8 @@ const adminSchema = new mongoose.Schema({
     enum: ["admin", "super-admin"],
     default: "admin",
   },
+  resetPasswordToken: String,
+  resetPasswordExpiry: Date,
 });
 
 adminSchema.pre("save", async function (next) {

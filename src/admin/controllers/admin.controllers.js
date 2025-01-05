@@ -7,11 +7,10 @@ import { User } from "../../Models/user.models.js";
 import { Category } from "../../Models/category.models.js";
 import { ActivityLog } from "../models/activityLog.models.js";
 import { sendEmail } from "../utils/email.js";
-import speakeasy from "speakeasy";
-import qrcode from "qrcode";
 import { apiError } from "../utils/apiError.js";
 import { apiResponse } from "../utils/apiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
+import crypto from "crypto";
 
 // Generate Access and Refresh Tokens
 const generateAccessTokensAndRefreshTokens = async (adminId) => {
@@ -32,6 +31,7 @@ const generateAccessTokensAndRefreshTokens = async (adminId) => {
   }
 };
 
+// Register a super admin
 const registerSuperAdmin = asyncHandler(async (req, res) => {
   console.log("Registering super admin:", req.body);
   const { email, password, role } = req.body;
@@ -58,53 +58,22 @@ const registerSuperAdmin = asyncHandler(async (req, res) => {
   );
 
   if (!createdSuperAdmin) {
-    throw new apiError(500, "Failed to register super admin. Please try again later");
+    throw new apiError(
+      500,
+      "Failed to register super admin. Please try again later"
+    );
   }
 
   console.log("Super admin registered successfully:", createdSuperAdmin);
   return res
     .status(201)
     .json(
-      new apiResponse(201, createdSuperAdmin, "Super admin registered successfully", true)
-    );
-});
-
-const register = asyncHandler(async (req, res) => {
-  console.log("Registering admin:", req.body);
-  const { email, password, role } = req.body;
-  if ([email, password, role].some((field) => field?.trim() === "")) {
-    throw new apiError(422, "Please fill in all the required fields");
-  }
-
-  // Check if the requester is a super admin
-  const requester = await Admin.findById(req.admin._id);
-  if (requester.role !== "super-admin") {
-    throw new apiError(403, "Only super admins can create new admins");
-  }
-
-  // Check if user already exists
-  const existedAdmin = await Admin.findOne({ email });
-
-  if (existedAdmin) {
-    throw new apiError(422, "Email already in use, please try a different one");
-  }
-
-  // Create new admin
-  const newAdmin = await Admin.create({ email, password, role });
-
-  const createdAdmin = await Admin.findById(newAdmin._id).select(
-    "-password -refreshToken"
-  );
-
-  if (!createdAdmin) {
-    throw new apiError(500, "Failed to register admin. Please try again later");
-  }
-
-  console.log("Admin registered successfully:", createdAdmin);
-  return res
-    .status(201)
-    .json(
-      new apiResponse(201, createdAdmin, "Admin registered successfully", true)
+      new apiResponse(
+        201,
+        createdSuperAdmin,
+        "Super admin registered successfully",
+        true
+      )
     );
 });
 
@@ -114,12 +83,10 @@ const login = asyncHandler(async (req, res) => {
   const { password, email } = req.body;
 
   if (!email) {
-    throw new apiError(422, "Email are required");
+    throw new apiError(422, "Email is required");
   }
 
-  const admin = await Admin.findOne({
-    email,
-  });
+  const admin = await Admin.findOne({ email });
 
   if (!admin) {
     throw new apiError(401, "Invalid credentials. Please try again");
@@ -143,7 +110,9 @@ const login = asyncHandler(async (req, res) => {
     secure: true,
   };
 
-  console.log("Admin logged in successfully:", loggedInAdmin);
+  const role = admin.role === "super-admin" ? "Super Admin" : "Admin";
+  console.log(`${role} logged in successfully:`, loggedInAdmin);
+
   return res
     .status(200)
     .cookie("accessToken", accessToken, options)
@@ -157,11 +126,12 @@ const login = asyncHandler(async (req, res) => {
           accessToken,
           refreshToken,
         },
-        "Admin logged in successfully"
+        `${role} logged in successfully`
       )
     );
 });
 
+// Logout an admin
 const logout = asyncHandler(async (req, res) => {
   console.log("Admin logout attempt:", req.admin._id);
   await Admin.findByIdAndUpdate(
@@ -175,12 +145,14 @@ const logout = asyncHandler(async (req, res) => {
     secure: true,
   };
 
-  console.log("Admin logged out successfully:", req.admin._id);
+  const role = req.admin.role === "super-admin" ? "Super Admin" : "Admin";
+  console.log(`${role} logged out successfully:`, req.admin._id);
+
   return res
     .status(200)
     .clearCookie("accessToken", options)
     .clearCookie("refreshToken", options)
-    .json(new apiResponse(200, {}, "Admin logged out successfully"));
+    .json(new apiResponse(200, {}, `${role} logged out successfully`));
 });
 
 // Refresh Access Token
@@ -230,108 +202,101 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
   }
 });
 
-const deletePost = async (req, res) => {
-  try {
-    await Post.findByIdAndDelete(req.params.id);
-    res.status(200).json({ message: "Post deleted successfully" });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
+// Forget Password
+const requestPasswordReset = asyncHandler(async (req, res) => {
+  const { email } = req.body;
+  const admin = await Admin.findOne({ email });
 
-const deleteComment = async (req, res) => {
-  try {
-    await Comment.findByIdAndDelete(req.params.id);
-    res.status(200).json({ message: "Comment deleted successfully" });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+  if (!admin) {
+    throw new apiError(404, "Admin not found");
   }
-};
 
-const deleteUser = async (req, res) => {
-  try {
-    await User.findByIdAndDelete(req.params.id);
-    res.status(200).json({ message: "User deleted successfully" });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
+  const resetToken = crypto.randomBytes(32).toString("hex");
+  const resetTokenExpiry = Date.now() + 3600000; // 1 hour
 
-const addCategory = async (req, res) => {
-  try {
-    const newCategory = new Category(req.body);
-    await newCategory.save();
-    res.status(201).json({ message: "Category added successfully" });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
+  admin.resetPasswordToken = resetToken;
+  admin.resetPasswordExpiry = resetTokenExpiry;
+  await admin.save({ validateBeforeSave: false });
 
-const createAdmin = async (req, res) => {
-  try {
-    const { email, password, role } = req.body;
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const newAdmin = new Admin({ email, password: hashedPassword, role });
-    await newAdmin.save();
-    sendEmail(
-      email,
-      "Admin Account Created",
-      "Your admin account has been created."
-    );
-    res.status(201).json({ message: "Admin created successfully" });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
+  const resetUrl = `${req.protocol}://${req.get("host")}/api/admin/reset-password/${resetToken}`;
+  const message = `You are receiving this email because you (or someone else) have requested the reset of a password. Please make a PUT request to: \n\n ${resetUrl}`;
 
-const resetPassword = async (req, res) => {
   try {
-    const { email, newPassword } = req.body;
-    const admin = await Admin.findOne({ email });
-    if (!admin) {
-      return res.status(404).json({ message: "Admin not found" });
-    }
-    admin.password = await bcrypt.hash(newPassword, 10);
-    await admin.save();
-    await ActivityLog.create({ adminId: admin._id, action: "Password reset" });
-    sendEmail(
-      email,
-      "Password Reset",
-      "Your password has been reset successfully."
-    );
-    res.status(200).json({ message: "Password reset successfully" });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
-
-const superAdminResetAdminPassword = async (req, res) => {
-  try {
-    const { adminId, newPassword } = req.body;
-    const admin = await Admin.findById(adminId);
-    if (!admin) {
-      return res.status(404).json({ message: "Admin not found" });
-    }
-    admin.password = await bcrypt.hash(newPassword, 10);
-    await admin.save();
-    await ActivityLog.create({
-      adminId: req.admin._id,
-      action: `Reset password for admin ${admin.email}`,
+    await sendEmail({
+      email: admin.email,
+      subject: "Password Reset Token",
+      message,
     });
-    sendEmail(
-      admin.email,
-      "Password Reset by Super Admin",
-      "Your password has been reset by the super admin."
-    );
-    res.status(200).json({ message: "Admin password reset successfully" });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
 
+    res.status(200).json({ message: "Email sent" });
+  } catch (error) {
+    admin.resetPasswordToken = undefined;
+    admin.resetPasswordExpiry = undefined;
+    await admin.save({ validateBeforeSave: false });
+
+    throw new apiError(500, "Email could not be sent");
+  }
+});
+
+// Reset Password with Token
+const resetPasswordWithToken = asyncHandler(async (req, res) => {
+  const { token } = req.params;
+  const { newPassword } = req.body;
+
+  const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
+
+  const admin = await Admin.findOne({
+    resetPasswordToken: hashedToken,
+    resetPasswordExpiry: { $gt: Date.now() },
+  });
+
+  if (!admin) {
+    throw new apiError(400, "Invalid or expired token");
+  }
+
+  admin.password = await bcrypt.hash(newPassword, 10);
+  admin.resetPasswordToken = undefined;
+  admin.resetPasswordExpiry = undefined;
+  await admin.save();
+
+  res.status(200).json({ message: "Password reset successfully" });
+});
+
+// Reset Password for Logged-in Admin
+const resetPassword = asyncHandler(async (req, res) => {
+  const { currentPassword, newPassword } = req.body;
+  const admin = await Admin.findById(req.admin._id);
+
+  if (!admin) {
+    throw new apiError(404, "Admin not found");
+  }
+
+  const isPasswordValid = await admin.isPasswordCorrect(currentPassword);
+
+  if (!isPasswordValid) {
+    throw new apiError(401, "Current password is incorrect");
+  }
+
+  admin.password = await bcrypt.hash(newPassword, 10);
+  await admin.save();
+
+  res.status(200).json({ message: "Password reset successfully" });
+});
+
+// Super admin creates a new admin
 const superAdminCreateAdmin = async (req, res) => {
   try {
+    console.log("Super admin creating new admin:", req.admin); // Log the super admin details
     const { email, password, role } = req.body;
+
+    // Check if admin with the same email already exists
+    const existingAdmin = await Admin.findOne({ email });
+    if (existingAdmin) {
+      return res
+        .status(400)
+        .json({ message: "Admin with this email already exists" });
+    }
+
     const hashedPassword = await bcrypt.hash(password, 10);
     const newAdmin = new Admin({ email, password: hashedPassword, role });
     await newAdmin.save();
@@ -344,12 +309,20 @@ const superAdminCreateAdmin = async (req, res) => {
       "Admin Account Created by Super Admin",
       "A super admin has created your admin account."
     );
-    res.status(201).json({ message: "Admin created successfully" });
+    res.status(201).json({
+      message: "Admin created successfully",
+      admin: {
+        id: newAdmin._id,
+        email: newAdmin.email,
+        role: newAdmin.role,
+      },
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 };
 
+// Super admin deletes an admin by ID
 const superAdminDeleteAdmin = async (req, res) => {
   try {
     const admin = await Admin.findByIdAndDelete(req.params.id);
@@ -368,30 +341,7 @@ const superAdminDeleteAdmin = async (req, res) => {
   }
 };
 
-const enable2FA = async (req, res) => {
-  const secret = speakeasy.generateSecret({ length: 20 });
-  const url = speakeasy.otpauthURL({
-    secret: secret.base32,
-    label: req.admin.email,
-    algorithm: "sha512",
-  });
-
-  await qrcode.toDataURL(url, (err, data_url) => {
-    res.json({ secret: secret.base32, qrCode: data_url });
-  });
-};
-
-const verify2FA = (req, res) => {
-  const { token, secret } = req.body;
-  const verified = speakeasy.totp.verify({ secret, encoding: "base32", token });
-
-  if (verified) {
-    res.json({ message: "2FA verified successfully" });
-  } else {
-    res.status(400).json({ message: "Invalid 2FA token" });
-  }
-};
-
+// Get activity logs
 const getActivityLogs = async (req, res) => {
   try {
     const logs = await ActivityLog.find().populate("adminId", "email");
@@ -401,6 +351,7 @@ const getActivityLogs = async (req, res) => {
   }
 };
 
+// Get all admins
 const getAllAdmins = async (req, res) => {
   try {
     const admins = await Admin.find().select("-password");
@@ -410,55 +361,16 @@ const getAllAdmins = async (req, res) => {
   }
 };
 
-const createSuperAdmin = async (req, res) => {
-  try {
-    const { email, password, username, role } = req.body;
-
-    // Check if the user already exists
-    const existingUser = await User.findOne({ email });
-    if (existingUser) {
-      return res.status(400).json({ message: "User already exists" });
-    }
-
-    // Hash the password
-    const hashedPassword = await bcrypt.hash(password, 12);
-
-    // Create a new user with the role of super-admin
-    const newUser = new User({
-      email,
-      username, // Add the username field
-      password: hashedPassword,
-      role: role || "super-admin",
-    });
-
-    // Save the user to the database
-    await newUser.save();
-
-    res.status(201).json({ message: "Super admin created successfully" });
-  } catch (error) {
-    console.error("Error creating super admin:", error); // Add this line to log the error
-    res.status(500).json({ message: "Something went wrong" });
-  }
-};
-
 export {
-  register,
   registerSuperAdmin,
   login,
   logout,
-  deletePost,
-  deleteComment,
-  deleteUser,
-  addCategory,
-  createAdmin,
   resetPassword,
   superAdminCreateAdmin,
   superAdminDeleteAdmin,
-  superAdminResetAdminPassword,
   getActivityLogs,
   getAllAdmins,
-  enable2FA,
-  verify2FA,
-  createSuperAdmin,
   refreshAccessToken,
+  requestPasswordReset,
+  resetPasswordWithToken,
 };

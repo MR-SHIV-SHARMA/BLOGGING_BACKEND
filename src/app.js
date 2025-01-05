@@ -1,6 +1,7 @@
 import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
+import { errorHandler } from "./admin/middleware/errorHandler.js";
 
 const app = express();
 
@@ -30,7 +31,9 @@ import bookmarkRouter from "./routes/bookmark.routes.js";
 import categoryRouter from "./routes/category.routes.js";
 import notificationRouter from "./routes/notification.routes.js";
 import searchHistoryRouter from "./routes/searchHistory.routes.js";
+import adminRoutes from "./admin/routes/admin.routes.js";
 
+app.use("/admin", adminRoutes, errorHandler);
 app.use("/api/v1/tag", tagRouter);
 app.use("/api/v1/post", postRouter);
 app.use("/api/v1/like", likeRouter);
