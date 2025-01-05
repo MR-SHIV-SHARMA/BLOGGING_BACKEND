@@ -172,6 +172,7 @@ const logout = asyncHandler(async (req, res) => {
 
     // Calculate the time difference in milliseconds
     const timeDifferenceMs = logoutTime - loginTime;
+    console.log("Time difference (ms):", timeDifferenceMs);
 
     // Convert milliseconds to hours, minutes, and seconds
     const hours = Math.floor(timeDifferenceMs / (1000 * 60 * 60));
@@ -187,6 +188,7 @@ const logout = asyncHandler(async (req, res) => {
   await ActivityLog.create({
     adminId: req.admin._id,
     action: `${role} logged out`,
+    logoutTime: new Date(),
   });
 
   return res
