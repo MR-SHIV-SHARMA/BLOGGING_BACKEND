@@ -380,6 +380,27 @@ const deleteComment = async (req, res) => {
   }
 };
 
+// Delete a user by ID
+const deleteUser = async (req, res) => {
+  try {
+    await User.findByIdAndDelete(req.params.id);
+    res.status(200).json({ message: "User deleted successfully" });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// Add a new category
+const addCategory = async (req, res) => {
+  try {
+    const newCategory = new Category(req.body);
+    await newCategory.save();
+    res.status(201).json({ message: "Category added successfully" });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
 export {
   registerSuperAdmin,
   login,
@@ -394,4 +415,6 @@ export {
   getActivityLogs,
   deletePost,
   deleteComment,
+  deleteUser,
+  addCategory,
 };

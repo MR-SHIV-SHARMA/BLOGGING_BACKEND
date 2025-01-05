@@ -1,40 +1,32 @@
-// Delete a user by ID
-const deleteUser = async (req, res) => {
-  try {
-    await User.findByIdAndDelete(req.params.id);
-    res.status(200).json({ message: "User deleted successfully" });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+import jwt from "jsonwebtoken";
+import { apiError } from "../utils/apiError.js";
+import { asyncHandler } from "../utils/asyncHandler.js";
+import { Admin } from "../models/admin.models.js";
+
+const authenticateAdmin = asyncHandler(async (req, res, next) => {
+  const token =
+    req.cookies?.accessToken ||
+    req.header("Authorization")?.replace("Bearer ", "");
+
+  if (!token) {
+    return next(new apiError(401, "Access token is missing"));
   }
-};
 
-// Add a new category
-const addCategory = async (req, res) => {
   try {
-    const newCategory = new Category(req.body);
-    await newCategory.save();
-    res.status(201).json({ message: "Category added successfully" });
+    const decodedToken = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET);
+
+    req.admin = await Admin.findById(decodedToken?._id).select(
+      "-password -refreshToken"
+    );
+
+    if (!req.admin) {
+      return next(new apiError(401, "Invalid token"));
+    }
+
+    next();
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    return next(new apiError(401, "Invalid token"));
   }
-};
+});
 
-
-
-// Delete a user by ID
-router.delete(
-  "/user/:id",
-  adminRateLimiter,
-  authenticateAdmin,
-  checkRole(["admin", "super-admin"]),
-  deleteUser
-);
-
-// Add a new category
-router.post(
-  "/category",
-  adminRateLimiter,
-  authenticateAdmin,
-  checkRole(["admin", "super-admin"]),
-  addCategory
-);
+export default authenticateAdmin;
