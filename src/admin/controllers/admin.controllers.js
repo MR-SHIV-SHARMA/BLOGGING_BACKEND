@@ -360,6 +360,26 @@ const getActivityLogs = async (req, res) => {
   }
 };
 
+// Delete a post by ID
+const deletePost = async (req, res) => {
+  try {
+    await Post.findByIdAndDelete(req.params.id);
+    res.status(200).json({ message: "Post deleted successfully" });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// Delete a comment by ID
+const deleteComment = async (req, res) => {
+  try {
+    await Comment.findByIdAndDelete(req.params.id);
+    res.status(200).json({ message: "Comment deleted successfully" });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
 export {
   registerSuperAdmin,
   login,
@@ -372,4 +392,6 @@ export {
   superAdminDeleteAdmin,
   getAllAdmins,
   getActivityLogs,
+  deletePost,
+  deleteComment,
 };

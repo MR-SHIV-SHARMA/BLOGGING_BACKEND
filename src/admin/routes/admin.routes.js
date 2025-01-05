@@ -10,6 +10,8 @@ import {
   registerSuperAdmin,
   requestPasswordReset,
   resetPasswordWithToken,
+  deletePost,
+  deleteComment,
 } from "../controllers/admin.controllers.js";
 import { checkRole } from "../middleware/roleMiddleware.js";
 import { adminRateLimiter } from "../middleware/rateLimiter.js";
@@ -81,6 +83,24 @@ router.get(
   authenticateAdmin,
   checkRole(["super-admin"]),
   getActivityLogs
+);
+
+// Delete a post by ID
+router.delete(
+  "/post/:id",
+  adminRateLimiter,
+  authenticateAdmin,
+  checkRole(["admin", "super-admin"]),
+  deletePost
+);
+
+// Delete a comment by ID
+router.delete(
+  "/comment/:id",
+  adminRateLimiter,
+  authenticateAdmin,
+  checkRole(["admin", "super-admin"]),
+  deleteComment
 );
 
 export default router;
