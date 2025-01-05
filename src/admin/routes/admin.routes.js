@@ -14,6 +14,7 @@ import {
   deleteComment,
   deleteUser,
   addCategory,
+  deleteCategory,
 } from "../controllers/admin.controllers.js";
 import { checkRole } from "../middleware/roleMiddleware.js";
 import { adminRateLimiter } from "../middleware/rateLimiter.js";
@@ -121,6 +122,15 @@ router.post(
   authenticateAdmin,
   checkRole(["admin", "super-admin"]),
   addCategory
+);
+
+// Delete a category by ID
+router.delete(
+  "/category/:id",
+  adminRateLimiter,
+  authenticateAdmin,
+  checkRole(["admin", "super-admin"]),
+  deleteCategory
 );
 
 export default router;
