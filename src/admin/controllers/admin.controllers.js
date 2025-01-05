@@ -65,6 +65,11 @@ const registerSuperAdmin = asyncHandler(async (req, res) => {
   }
 
   console.log("Super admin registered successfully:", createdSuperAdmin);
+  await ActivityLog.create({
+    adminId: newSuperAdmin._id,
+    action: "Registered super admin",
+  });
+
   return res
     .status(201)
     .json(
@@ -113,6 +118,11 @@ const login = asyncHandler(async (req, res) => {
   const role = admin.role === "super-admin" ? "Super Admin" : "Admin";
   console.log(`${role} logged in successfully:`, loggedInAdmin);
 
+  await ActivityLog.create({
+    adminId: admin._id,
+    action: `${role} logged in`,
+  });
+
   return res
     .status(200)
     .cookie("accessToken", accessToken, options)
@@ -147,6 +157,11 @@ const logout = asyncHandler(async (req, res) => {
 
   const role = req.admin.role === "super-admin" ? "Super Admin" : "Admin";
   console.log(`${role} logged out successfully:`, req.admin._id);
+
+  await ActivityLog.create({
+    adminId: req.admin._id,
+    action: `${role} logged out`,
+  });
 
   return res
     .status(200)
@@ -185,6 +200,12 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
       await generateAccessTokensAndRefreshTokens(admin._id);
 
     console.log("Access token refreshed successfully:", admin._id);
+
+    await ActivityLog.create({
+      adminId: admin._id,
+      action: "Refreshed access token",
+    });
+
     return res
       .status(200)
       .cookie("accessToken", accessToken, options)
@@ -228,6 +249,11 @@ const requestPasswordReset = asyncHandler(async (req, res) => {
       message,
     });
 
+    await ActivityLog.create({
+      adminId: admin._id,
+      action: "Requested password reset",
+    });
+
     res.status(200).json({ message: "Email sent" });
   } catch (error) {
     admin.resetPasswordToken = undefined;
@@ -259,6 +285,11 @@ const resetPasswordWithToken = asyncHandler(async (req, res) => {
   admin.resetPasswordExpiry = undefined;
   await admin.save();
 
+  await ActivityLog.create({
+    adminId: admin._id,
+    action: "Reset password with token",
+  });
+
   res.status(200).json({ message: "Password reset successfully" });
 });
 
@@ -279,6 +310,11 @@ const resetPassword = asyncHandler(async (req, res) => {
 
   admin.password = await bcrypt.hash(newPassword, 10);
   await admin.save();
+
+  await ActivityLog.create({
+    adminId: admin._id,
+    action: "Reset password",
+  });
 
   res.status(200).json({ message: "Password reset successfully" });
 });
@@ -334,7 +370,14 @@ const superAdminDeleteAdmin = async (req, res) => {
       "Admin Account Deleted",
       "Your admin account has been deleted by the super admin."
     );
-    res.status(200).json({ message: "Admin deleted successfully" });
+    res.status(200).json({
+      message: "Admin deleted successfully",
+      admin: {
+        id: admin._id,
+        email: admin.email,
+        role: admin.role,
+      },
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -363,8 +406,21 @@ const getActivityLogs = async (req, res) => {
 // Delete a post by ID
 const deletePost = async (req, res) => {
   try {
-    await Post.findByIdAndDelete(req.params.id);
-    res.status(200).json({ message: "Post deleted successfully" });
+    const post = await Post.findByIdAndDelete(req.params.id);
+    if (!post) {
+      return res.status(404).json({ message: "Post not found" });
+    }
+    await ActivityLog.create({
+      adminId: req.admin._id,
+      action: `Deleted post ${req.params.id}`,
+    });
+    res.status(200).json({
+      message: "Post deleted successfully",
+      post: {
+        id: post._id,
+        title: post.title,
+      },
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -373,8 +429,21 @@ const deletePost = async (req, res) => {
 // Delete a comment by ID
 const deleteComment = async (req, res) => {
   try {
-    await Comment.findByIdAndDelete(req.params.id);
-    res.status(200).json({ message: "Comment deleted successfully" });
+    const comment = await Comment.findByIdAndDelete(req.params.id);
+    if (!comment) {
+      return res.status(404).json({ message: "Comment not found" });
+    }
+    await ActivityLog.create({
+      adminId: req.admin._id,
+      action: `Deleted comment ${req.params.id}`,
+    });
+    res.status(200).json({
+      message: "Comment deleted successfully",
+      comment: {
+        id: comment._id,
+        content: comment.content,
+      },
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -383,8 +452,21 @@ const deleteComment = async (req, res) => {
 // Delete a user by ID
 const deleteUser = async (req, res) => {
   try {
-    await User.findByIdAndDelete(req.params.id);
-    res.status(200).json({ message: "User deleted successfully" });
+    const user = await User.findByIdAndDelete(req.params.id);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    await ActivityLog.create({
+      adminId: req.admin._id,
+      action: `Deleted user ${req.params.id}`,
+    });
+    res.status(200).json({
+      message: "User deleted successfully",
+      user: {
+        id: user._id,
+        email: user.email,
+      },
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -395,12 +477,23 @@ const addCategory = async (req, res) => {
   try {
     const newCategory = new Category(req.body);
     await newCategory.save();
-    res.status(201).json({ message: "Category added successfully" });
+    await ActivityLog.create({
+      adminId: req.admin._id,
+      action: `Added category ${newCategory.name}`,
+    });
+    res.status(201).json({
+      message: "Category added successfully",
+      category: {
+        id: newCategory._id,
+        name: newCategory.name,
+      },
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 };
 
+// Delete a category by ID
 const deleteCategory = async (req, res) => {
   try {
     const { id } = req.params;
@@ -410,7 +503,18 @@ const deleteCategory = async (req, res) => {
       return res.status(404).json({ message: "Category not found" });
     }
 
-    res.status(200).json({ message: "Category deleted successfully" });
+    await ActivityLog.create({
+      adminId: req.admin._id,
+      action: `Deleted category ${id}`,
+    });
+
+    res.status(200).json({
+      message: "Category deleted successfully",
+      category: {
+        id: category._id,
+        name: category.name,
+      },
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
