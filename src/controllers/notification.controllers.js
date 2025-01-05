@@ -74,14 +74,24 @@ const markAsRead = asyncHandler(async (req, res) => {
 const markAllAsRead = asyncHandler(async (req, res) => {
   const { userId } = req.params;
 
+  console.log("markAllAsRead called with userId:", userId); // Debug logging
+
   if (!userId) {
     throw new apiError(400, "User ID is required.");
   }
 
   const result = await Notification.updateMany(
-    { userId, isRead: false },
+    { userId: userId, isRead: false },
     { isRead: true }
   );
+
+  console.log("Notifications marked as read:", result); // Debug logging
+
+  const updatedNotifications = await Notification.find({
+    userId: userId,
+    isRead: true,
+  });
+  console.log("Updated notifications:", updatedNotifications); // Debug logging
 
   return res
     .status(200)
