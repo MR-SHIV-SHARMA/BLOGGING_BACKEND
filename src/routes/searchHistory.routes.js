@@ -11,16 +11,16 @@ const router = express.Router();
 
 router.use(verifyJWT); // Protect all routes
 
-// Save a search query
+// Create a new search history entry
 router.route("/").post(createSearchHistory);
 
-// Get search history for the user
+// Get search history for a user
 router.route("/").get(getUserSearchHistory);
+
+// Clear all search history for a user
+router.route("/clear").delete(clearUserSearchHistory);
 
 // Delete a specific search history entry
 router.route("/:historyId").delete(deleteSearchHistoryEntry);
-
-// Clear all search history for the user
-router.route("/clear").delete(clearUserSearchHistory);
 
 export default router;
