@@ -28,7 +28,7 @@ router.use(
     secret: process.env.SESSION_SECRET,
     resave: false,
     saveUninitialized: true,
-    cookie: { secure: true },
+    cookie: { secure: true, httpOnly: true },
   })
 );
 
