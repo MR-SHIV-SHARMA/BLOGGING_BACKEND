@@ -130,11 +130,18 @@ const registerSuperAdmin = asyncHandler(async (req, res) => {
 
   // Validate input fields
   if (!email || !password) {
+    console.error("Validation Error: Email and password are required!");
     throw new apiError(422, "Email and password are required!");
   }
 
+  // Log the requesting admin for debugging
+  console.log("Requesting admin:", req.admin);
+
   // Ensure the requesting admin is the default super admin
   if (!req.admin.isDefaultSuperAdmin) {
+    console.error(
+      "Permission Error: Only the default super admin can create another super admin!"
+    );
     throw new apiError(
       403,
       "Only the default super admin can create another super admin!"
@@ -142,20 +149,27 @@ const registerSuperAdmin = asyncHandler(async (req, res) => {
   }
 
   // Check if a super admin with the same email already exists
+  console.log(`Checking if a super admin already exists with email: ${email}`);
   const existingSuperAdmin = await Admin.findOne({
     email,
     role: "super-admin",
   });
+
   if (existingSuperAdmin) {
+    console.error(`Super admin already exists with email: ${email}`);
     throw new apiError(422, "A super admin already exists with this email!");
   }
 
   // Create the new super admin
-  const newSuperAdmin = await Admin.create({
+  console.log("Creating new super admin...");
+  const newSuperAdmin = new Admin({
     email,
-    password: await bcrypt.hash(password, 10), // Hash the password for security
+    password,
     role: "super-admin",
   });
+
+  await newSuperAdmin.save();
+  console.log(`New super admin created with email: ${newSuperAdmin.email}`);
 
   // Fetch the newly created super admin without sensitive fields
   const createdSuperAdmin = await Admin.findById(newSuperAdmin._id).select(
@@ -163,6 +177,9 @@ const registerSuperAdmin = asyncHandler(async (req, res) => {
   );
 
   if (!createdSuperAdmin) {
+    console.error(
+      "Database Error: Failed to fetch the newly created super admin."
+    );
     throw new apiError(
       500,
       "Failed to create super admin. Please try again later."
@@ -172,10 +189,16 @@ const registerSuperAdmin = asyncHandler(async (req, res) => {
   console.log("Super admin registered successfully:", createdSuperAdmin);
 
   // Log the activity
-  await ActivityLog.create({
-    adminId: req.admin._id,
-    action: `Created a new super admin with email: ${email}`,
-  });
+  console.log("Logging activity for admin ID:", req.admin._id); // Debugging
+  try {
+    await ActivityLog.create({
+      adminId: req.admin._id,
+      action: `Created a new super admin with email: ${email}`,
+    });
+    console.log("Activity logged for creating super admin.");
+  } catch (error) {
+    console.error("Error logging activity:", error);
+  }
 
   // Respond with success
   return res
@@ -244,57 +267,6 @@ const deleteSuperAdmin = asyncHandler(async (req, res) => {
   });
 });
 
-// // Register a super admin
-// const registerSuperAdmin = asyncHandler(async (req, res) => {
-//   console.log("Registering super admin:", req.body);
-//   const { email, password, role } = req.body;
-//   if ([email, password, role].some((field) => field?.trim() === "")) {
-//     throw new apiError(422, "Please fill in all the required fields");
-//   }
-
-//   // Check if super admin already exists
-//   const existedSuperAdmin = await Admin.findOne({ email, role: "super-admin" });
-
-//   if (existedSuperAdmin) {
-//     throw new apiError(422, "Super admin already exists with this email");
-//   }
-
-//   // Create new super admin
-//   const newSuperAdmin = await Admin.create({
-//     email,
-//     password,
-//     role: "super-admin",
-//   });
-
-//   const createdSuperAdmin = await Admin.findById(newSuperAdmin._id).select(
-//     "-password -refreshToken"
-//   );
-
-//   if (!createdSuperAdmin) {
-//     throw new apiError(
-//       500,
-//       "Failed to register super admin. Please try again later"
-//     );
-//   }
-
-//   console.log("Super admin registered successfully:", createdSuperAdmin);
-//   await ActivityLog.create({
-//     adminId: newSuperAdmin._id,
-//     action: "Registered super admin",
-//   });
-
-//   return res
-//     .status(201)
-//     .json(
-//       new apiResponse(
-//         201,
-//         createdSuperAdmin,
-//         "Super admin registered successfully",
-//         true
-//       )
-//     );
-// });
-
 // User Login
 const login = asyncHandler(async (req, res) => {
   console.log("Admin login attempt:", req.body);
@@ -316,12 +288,17 @@ const login = asyncHandler(async (req, res) => {
     throw new apiError(401, "Password is incorrect. Please try again");
   }
 
+  const isDefaultSuperAdmin = admin.isDefaultSuperAdmin; // This will be true or false based on the DB
+
   const { accessToken, refreshToken } =
     await generateAccessTokensAndRefreshTokens(admin._id);
 
   const loggedInAdmin = await Admin.findById(admin._id).select(
     "-password -refreshToken"
   );
+
+  // Ensure that req.admin has isDefaultSuperAdmin
+  req.admin = { ...loggedInAdmin._doc, isDefaultSuperAdmin }; // This ensures that isDefaultSuperAdmin is included
 
   const options = {
     httpOnly: true,
@@ -348,7 +325,7 @@ const login = asyncHandler(async (req, res) => {
         200,
         {
           success: true,
-          admin: loggedInAdmin,
+          admin: req.admin, // Use the updated req.admin object
           accessToken,
           refreshToken,
         },

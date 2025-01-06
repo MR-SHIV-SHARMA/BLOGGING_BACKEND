@@ -30,3 +30,58 @@ const authenticateAdmin = asyncHandler(async (req, res, next) => {
 });
 
 export default authenticateAdmin;
+
+
+// Logout an admin
+const logout = asyncHandler(async (req, res) => {
+  console.log("Admin logout attempt:", req.admin._id);
+
+  // Ensure that the admin exists
+  if (!req.admin || !req.admin._id) {
+    console.error("Logout Error: Admin not found in request.");
+    return res.status(400).json(new apiResponse(400, null, "Admin not found."));
+  }
+
+  await Admin.findByIdAndUpdate(
+    req.admin._id,
+    { $set: { refreshToken: undefined } },
+    { new: true }
+  );
+
+  const options = {
+    httpOnly: true,
+    secure: true,
+  };
+
+  const role = req.admin.role === "super-admin" ? "Super Admin" : "Admin";
+  console.log(`${role} logged out successfully:`, req.admin._id);
+
+  // Create ActivityLog for logout
+  try {
+    await ActivityLog.create({
+      adminId: req.admin._id,
+      action: `${role} logged out`,
+    });
+    console.log("Activity logged for admin logout.");
+  } catch (error) {
+    console.error("Error logging activity during logout:", error);
+  }
+
+  return res
+    .status(200)
+    .clearCookie("accessToken", options)
+    .clearCookie("refreshToken", options)
+    .json(
+      new apiResponse(
+        200,
+        {
+          admin: {
+            id: req.admin._id,
+            email: req.admin.email,
+            role: req.admin.role,
+          },
+        },
+        `${role} logged out successfully`
+      )
+    );
+});

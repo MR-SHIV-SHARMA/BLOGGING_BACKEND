@@ -18,6 +18,7 @@ const adminSchema = new mongoose.Schema(
       enum: ["admin", "super-admin"],
       default: "admin",
     },
+    isDefaultSuperAdmin: { type: Boolean, default: false }, // Ensure this field is defined
     resetPasswordToken: String,
     resetPasswordExpiry: Date,
   },
