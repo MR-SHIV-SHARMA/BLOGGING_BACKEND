@@ -6,11 +6,11 @@ import { Comment } from "../../Models/comment.models.js";
 import { User } from "../../Models/user.models.js";
 import { Category } from "../../Models/category.models.js";
 import { ActivityLog } from "../models/activityLog.models.js";
-import { sendEmail } from "../utils/email.js";
 import { apiError } from "../utils/apiError.js";
 import { apiResponse } from "../utils/apiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import crypto from "crypto";
+import { sendEmail } from "../helpers/mailer.js";
 
 // Generate Access and Refresh Tokens
 const generateAccessTokensAndRefreshTokens = async (adminId) => {
@@ -30,6 +30,65 @@ const generateAccessTokensAndRefreshTokens = async (adminId) => {
     throw new apiError(500, "Error generating access and refresh tokens");
   }
 };
+
+// Function to Create Default Super Admin
+const createDefaultSuperAdmin = asyncHandler(async (req, res) => {
+  const defaultEmail = process.env.DEFAULT_SUPER_ADMIN_EMAIL;
+  const defaultPassword = process.env.DEFAULT_SUPER_ADMIN_PASSWORD;
+
+  if (!defaultEmail || !defaultPassword) {
+    console.error("Default Super Admin credentials are not set in .env file.");
+    throw new apiError(500, "Default Super Admin credentials are missing.");
+  }
+
+  try {
+    const existingSuperAdmin = await Admin.findOne({ role: "super-admin" });
+    if (existingSuperAdmin) {
+      console.log(
+        `Default Super Admin already exists with email: ${existingSuperAdmin.email}`
+      );
+      return res
+        .status(200)
+        .json(
+          new apiResponse(
+            200,
+            { email: existingSuperAdmin.email },
+            "Default Super Admin already exists.",
+            true
+          )
+        );
+    }
+
+    const superAdmin = new Admin({
+      email: defaultEmail,
+      password: defaultPassword,
+      role: "super-admin",
+    });
+
+    await superAdmin.save();
+    console.log("Default Super Admin created successfully!");
+
+    await sendEmail({
+      email: defaultEmail,
+      message: `Your Super Admin account has been created successfully. \n\nEmail: ${defaultEmail}\nPassword: ${defaultPassword}`,
+    });
+
+    console.log("Super Admin notified via email.");
+    return res
+      .status(201)
+      .json(
+        new apiResponse(
+          201,
+          null,
+          "Default Super Admin created successfully.",
+          true
+        )
+      );
+  } catch (error) {
+    console.error("Error creating default Super Admin:", error);
+    throw new apiError(500, "Error creating default Super Admin.");
+  }
+});
 
 // Register a super admin
 const registerSuperAdmin = asyncHandler(async (req, res) => {
@@ -538,6 +597,7 @@ const deleteCategory = async (req, res) => {
 };
 
 export {
+  createDefaultSuperAdmin,
   registerSuperAdmin,
   login,
   logout,

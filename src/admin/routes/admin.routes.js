@@ -1,6 +1,7 @@
 import express from "express";
 import session from "express-session";
 import {
+  createDefaultSuperAdmin,
   login,
   logout,
   resetPassword,
@@ -30,6 +31,13 @@ router.use(
     saveUninitialized: true,
     cookie: { secure: true, httpOnly: true },
   })
+);
+
+// Create Default Super Admin
+router.post(
+  "/super-admin/create-Default/SuperAdmin",
+  adminRateLimiter,
+  createDefaultSuperAdmin
 );
 
 // Register a super admin
