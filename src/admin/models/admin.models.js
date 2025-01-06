@@ -2,24 +2,29 @@ import mongoose from "mongoose";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
 
-const adminSchema = new mongoose.Schema({
-  email: {
-    type: String,
-    required: true,
-    unique: true,
+const adminSchema = new mongoose.Schema(
+  {
+    email: {
+      type: String,
+      required: true,
+      unique: true,
+    },
+    password: {
+      type: String,
+      required: true,
+    },
+    role: {
+      type: String,
+      enum: ["admin", "super-admin"],
+      default: "admin",
+    },
+    resetPasswordToken: String,
+    resetPasswordExpiry: Date,
   },
-  password: {
-    type: String,
-    required: true,
-  },
-  role: {
-    type: String,
-    enum: ["admin", "super-admin"],
-    default: "admin",
-  },
-  resetPasswordToken: String,
-  resetPasswordExpiry: Date,
-});
+  {
+    timestamps: true,
+  }
+);
 
 adminSchema.pre("save", async function (next) {
   if (!this.isModified("password")) return next();

@@ -121,7 +121,6 @@ const login = asyncHandler(async (req, res) => {
   const loginLog = await ActivityLog.create({
     adminId: admin._id,
     action: `${role} logged in`,
-    loginTime: new Date(),
   });
 
   req.session.loginLogId = loginLog._id; // Store the login log ID in the session
@@ -163,32 +162,10 @@ const logout = asyncHandler(async (req, res) => {
   console.log(`${role} logged out successfully:`, req.admin._id);
 
   const loginLog = await ActivityLog.findById(req.session.loginLogId);
-  console.log("Login Log:", loginLog); // Debugging: Log the loginLog
-
-  if (loginLog) {
-    loginLog.logoutTime = new Date(); // Set the logout time
-    const loginTime = loginLog.loginTime;
-    const logoutTime = loginLog.logoutTime;
-
-    // Calculate the time difference in milliseconds
-    const timeDifferenceMs = logoutTime - loginTime;
-    console.log("Time difference (ms):", timeDifferenceMs);
-
-    // Convert milliseconds to hours, minutes, and seconds
-    const hours = Math.floor(timeDifferenceMs / (1000 * 60 * 60));
-    const minutes = Math.floor(
-      (timeDifferenceMs % (1000 * 60 * 60)) / (1000 * 60)
-    );
-    const seconds = Math.floor((timeDifferenceMs % (1000 * 60)) / 1000);
-
-    loginLog.sessionDuration = `${hours}h ${minutes}m ${seconds}s`; // Store the session duration
-    await loginLog.save();
-  }
 
   await ActivityLog.create({
     adminId: req.admin._id,
     action: `${role} logged out`,
-    logoutTime: new Date(),
   });
 
   return res
@@ -204,7 +181,6 @@ const logout = asyncHandler(async (req, res) => {
             email: req.admin.email,
             role: req.admin.role,
           },
-          sessionDuration: loginLog ? loginLog.sessionDuration : null, // Include session duration in the response
         },
         `${role} logged out successfully`
       )
