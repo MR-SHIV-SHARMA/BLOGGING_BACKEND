@@ -2,6 +2,7 @@ import express from "express";
 import session from "express-session";
 import {
   createDefaultSuperAdmin,
+  deleteSuperAdmin,
   login,
   logout,
   resetPassword,
@@ -41,7 +42,22 @@ router.post(
 );
 
 // Register a super admin
-router.post("/super-admin/register", adminRateLimiter, registerSuperAdmin);
+router.post(
+  "/super-admin/register",
+  adminRateLimiter,
+  authenticateAdmin,
+  checkRole(["super-admin"]),
+  registerSuperAdmin
+);
+
+// Only the default super admin can delete other super admins
+router.delete(
+  "/super-admin/delete/:id",
+  adminRateLimiter,
+  authenticateAdmin,
+  checkRole(["super-admin"]),
+  deleteSuperAdmin
+);
 
 // Login an admin or super admin
 router.post("/login", adminRateLimiter, login);
