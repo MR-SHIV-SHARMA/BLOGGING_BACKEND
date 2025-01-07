@@ -31,9 +31,17 @@ import bookmarkRouter from "./routes/bookmark.routes.js";
 import categoryRouter from "./routes/category.routes.js";
 import notificationRouter from "./routes/notification.routes.js";
 import searchHistoryRouter from "./routes/searchHistory.routes.js";
+import authRoutes from "./admin/routes/auth.routes.js";
 import adminRoutes from "./admin/routes/admin.routes.js";
+import contentRoutes from "./admin/routes/content.routes.js";
+import activityRoutes from "./admin/routes/activity.routes.js";
+import superAdminRoutes from "./admin/routes/superAdmin.routes.js";
 
+app.use("/auth", authRoutes, errorHandler);
 app.use("/admin", adminRoutes, errorHandler);
+app.use("/content", contentRoutes, errorHandler);
+app.use("/activity", activityRoutes, errorHandler);
+app.use("/super-admin", superAdminRoutes, errorHandler);
 app.use("/api/v1/tag", tagRouter);
 app.use("/api/v1/post", postRouter);
 app.use("/api/v1/like", likeRouter);

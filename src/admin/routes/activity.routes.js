@@ -1,6 +1,6 @@
 import express from "express";
 import session from "express-session";
-import { getAllAdmins } from "../controllers/admin.controllers.js";
+import { getActivityLogs } from "../controllers/activity.controllers.js";
 import { checkRole } from "../middleware/roleMiddleware.js";
 import { adminRateLimiter } from "../middleware/rateLimiter.js";
 import authenticateAdmin from "../middleware/authMiddleware.js";
@@ -16,13 +16,13 @@ router.use(
   })
 );
 
-// Get all admins
+// Get activity logs
 router.get(
-  "/super-admin/admins",
+  "/super-admin/activity-logs",
   adminRateLimiter,
   authenticateAdmin,
   checkRole(["super-admin"]),
-  getAllAdmins
+  getActivityLogs
 );
 
 export default router;
