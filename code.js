@@ -85,3 +85,54 @@ const logout = asyncHandler(async (req, res) => {
       )
     );
 });
+
+
+// Super Admin deletes an admin by ID
+const superAdminDeleteAdmin = async (req, res) => {
+  try {
+    const { id } = req.params;
+    console.log("Attempting to delete admin with ID:", id);
+
+    // Check if the admin exists
+    const admin = await Admin.findById(id);
+    if (!admin) {
+      console.log("Admin not found for ID:", id);
+      return res.status(404).json({ message: "Admin not found!" });
+    }
+
+    // Delete the admin using findByIdAndDelete
+    await Admin.findByIdAndDelete(id);
+    console.log("Admin deleted successfully:", admin.email);
+
+    // Log the activity
+    await ActivityLog.create({
+      adminId: req.admin._id,
+      action: `Deleted admin ${admin.email}`,
+    });
+    console.log("Activity logged for deleting admin.");
+
+    // Send email notification if the admin email is defined
+    if (admin.email) {
+      await sendEmail(
+        admin.email,
+        "Admin Account Deleted",
+        "Your admin account has been deleted by the super admin."
+      );
+      console.log("Email notification sent to:", admin.email);
+    } else {
+      console.error("Error: Admin email is not defined.");
+    }
+
+    res.status(200).json({
+      message: "Admin deleted successfully!",
+      admin: {
+        id: admin._id,
+        email: admin.email,
+        role: admin.role,
+      },
+    });
+  } catch (error) {
+    console.error("Error deleting admin:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+};
