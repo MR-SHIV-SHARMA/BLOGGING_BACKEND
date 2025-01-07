@@ -226,11 +226,11 @@ const deleteSuperAdmin = asyncHandler(async (req, res) => {
   });
 
   // Notify the deleted super admin (optional, if email service is set up)
-  sendEmail(
-    superAdminToDelete.email,
-    "Super Admin Account Deleted",
-    "Your super admin account has been deleted by the default super admin."
-  );
+  await sendEmail({
+    email: superAdminToDelete.email,
+    subject: "Super Admin Account Deleted",
+    message: `"Your super admin account has been deleted successfully by the default super admin. \n\nEmail: ${superAdminToDelete.email}`,
+  });
 
   return res.status(200).json({
     message: "Super admin deleted successfully!",

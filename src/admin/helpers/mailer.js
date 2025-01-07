@@ -24,11 +24,14 @@ export const sendEmail = async ({ email, emailType, adminId, message }) => {
     const transport = nodemailer.createTransport({
       host: "sandbox.smtp.mailtrap.io",
       port: 2525,
+      secure: false, // Use false for Mailtrap sandbox
       auth: {
         user: "d435d26f63d03b", // Replace with your Mailtrap credentials
         pass: "64eea3d9831444", // Replace with your Mailtrap credentials
       },
+      debug: true, // Enable debugging
     });
+    transport.on("log", console.log); // Log detailed SMTP interactions
 
     const mailOptions = {
       from: "shiv@gmail.com",
