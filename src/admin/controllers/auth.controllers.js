@@ -11,7 +11,6 @@ import { sendEmail } from "../helpers/mailer.js";
 // Generate Access and Refresh Tokens
 const generateAccessTokensAndRefreshTokens = async (adminId) => {
   try {
-    console.log(`Generating tokens for admin ID: ${adminId}`);
     const admin = await Admin.findById(adminId);
     const accessToken = admin.generateAccessToken();
     const refreshToken = admin.generateRefreshToken();
@@ -19,17 +18,14 @@ const generateAccessTokensAndRefreshTokens = async (adminId) => {
     admin.refreshToken = refreshToken;
     await admin.save({ validateBeforeSave: false });
 
-    console.log(`Tokens generated for admin ID: ${adminId}`);
     return { accessToken, refreshToken };
   } catch (error) {
-    console.error("Error generating access and refresh tokens:", error);
     throw new apiError(500, "Error generating access and refresh tokens");
   }
 };
 
 // User Login
 const login = asyncHandler(async (req, res) => {
-  console.log("Admin login attempt:", req.body);
   const { password, email } = req.body;
 
   if (!email) {
@@ -66,15 +62,19 @@ const login = asyncHandler(async (req, res) => {
   };
 
   const role = admin.role === "super-admin" ? "Super Admin" : "Admin";
-  console.log(`${role} logged in successfully:`, loggedInAdmin);
 
-  const loginLog = await ActivityLog.create({
+  await ActivityLog.create({
     adminId: admin._id,
     action: `${role} logged in`,
   });
 
-  req.session.loginLogId = loginLog._id; // Store the login log ID in the session
-  console.log("Login Log ID:", req.session.loginLogId); // Debugging: Log the loginLogId
+  // Send login email notification
+  const message = `Dear ${admin.email},\n\nYou have successfully logged in. If this was not you, please contact support immediately.`;
+  await sendEmail({
+    email: admin.email,
+    subject: "Login Notification",
+    message,
+  });
 
   return res
     .status(200)
@@ -83,12 +83,7 @@ const login = asyncHandler(async (req, res) => {
     .json(
       new apiResponse(
         200,
-        {
-          success: true,
-          admin: req.admin, // Use the updated req.admin object
-          accessToken,
-          refreshToken,
-        },
+        { success: true, admin: loggedInAdmin, accessToken, refreshToken },
         `${role} logged in successfully`
       )
     );
@@ -96,7 +91,6 @@ const login = asyncHandler(async (req, res) => {
 
 // Logout an admin
 const logout = asyncHandler(async (req, res) => {
-  console.log("Admin logout attempt:", req.admin._id);
   await Admin.findByIdAndUpdate(
     req.admin._id,
     { $set: { refreshToken: undefined } },
@@ -109,13 +103,18 @@ const logout = asyncHandler(async (req, res) => {
   };
 
   const role = req.admin.role === "super-admin" ? "Super Admin" : "Admin";
-  console.log(`${role} logged out successfully:`, req.admin._id);
-
-  const loginLog = await ActivityLog.findById(req.session.loginLogId);
 
   await ActivityLog.create({
     adminId: req.admin._id,
     action: `${role} logged out`,
+  });
+
+  // Send logout email notification
+  const message = `Dear ${req.admin.email},\n\nYou have successfully logged out. If this was not you, please contact support immediately.`;
+  await sendEmail({
+    email: req.admin.email,
+    subject: "Logout Notification",
+    message,
   });
 
   return res
@@ -139,7 +138,6 @@ const logout = asyncHandler(async (req, res) => {
 
 // Refresh Access Token
 const refreshAccessToken = asyncHandler(async (req, res) => {
-  console.log("Refreshing access token:", req.body);
   const incomingRefreshToken =
     req.cookies.refreshToken || req.body.refreshToken;
 
@@ -166,11 +164,17 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
     const { accessToken, newRefreshToken } =
       await generateAccessTokensAndRefreshTokens(admin._id);
 
-    console.log("Access token refreshed successfully:", admin._id);
-
     await ActivityLog.create({
       adminId: admin._id,
       action: "Refreshed access token",
+    });
+
+    // Send refresh token email notification
+    const message = `Dear ${admin.name},\n\nYour access token was refreshed. If this was not you, please contact support immediately.`;
+    await sendEmail({
+      email: admin.email,
+      subject: "Access Token Refreshed",
+      message,
     });
 
     return res
@@ -185,7 +189,6 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
         )
       );
   } catch (error) {
-    console.error("Error refreshing access token:", error);
     throw new apiError(401, error?.message || "Invalid refresh token");
   }
 });
@@ -207,28 +210,20 @@ const requestPasswordReset = asyncHandler(async (req, res) => {
   await admin.save({ validateBeforeSave: false });
 
   const resetUrl = `${req.protocol}://${req.get("host")}/api/admin/reset-password/${resetToken}`;
-  const message = `You are receiving this email because you (or someone else) have requested the reset of a password. Please make a PUT request to: \n\n ${resetUrl}`;
+  const message = `Dear ${admin.name},\n\nYou have requested a password reset. Please click the link below to reset your password:\n${resetUrl}\n\nIf you did not request this, please ignore this email.`;
 
-  try {
-    await sendEmail({
-      email: admin.email,
-      subject: "Password Reset Token",
-      message,
-    });
+  await sendEmail({
+    email: admin.email,
+    subject: "Password Reset Request",
+    message,
+  });
 
-    await ActivityLog.create({
-      adminId: admin._id,
-      action: "Requested password reset",
-    });
+  await ActivityLog.create({
+    adminId: admin._id,
+    action: "Requested password reset",
+  });
 
-    res.status(200).json({ message: "Email sent" });
-  } catch (error) {
-    admin.resetPasswordToken = undefined;
-    admin.resetPasswordExpiry = undefined;
-    await admin.save({ validateBeforeSave: false });
-
-    throw new apiError(500, "Email could not be sent");
-  }
+  res.status(200).json({ message: "Email sent" });
 });
 
 // Reset Password with Token
@@ -257,6 +252,14 @@ const resetPasswordWithToken = asyncHandler(async (req, res) => {
     action: "Reset password with token",
   });
 
+  // Send password reset confirmation email
+  const message = `Dear ${admin.name},\n\nYour password has been successfully reset. If this was not you, please contact support immediately.`;
+  await sendEmail({
+    email: admin.email,
+    subject: "Password Reset Confirmation",
+    message,
+  });
+
   res.status(200).json({ message: "Password reset successfully" });
 });
 
@@ -281,6 +284,14 @@ const resetPassword = asyncHandler(async (req, res) => {
   await ActivityLog.create({
     adminId: admin._id,
     action: "Reset password",
+  });
+
+  // Send password reset confirmation email
+  const message = `Dear ${admin.name},\n\nYour password has been successfully changed. If this was not you, please contact support immediately.`;
+  await sendEmail({
+    email: admin.email,
+    subject: "Password Changed",
+    message,
   });
 
   res.status(200).json({ message: "Password reset successfully" });

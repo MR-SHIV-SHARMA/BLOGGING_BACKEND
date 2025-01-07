@@ -3,6 +3,7 @@ import { Comment } from "../../Models/comment.models.js";
 import { User } from "../../Models/user.models.js";
 import { Category } from "../../Models/category.models.js";
 import { ActivityLog } from "../models/activityLog.models.js";
+import { sendEmail } from "../helpers/mailer.js";
 
 // Delete a post by ID
 const deletePost = async (req, res) => {
@@ -15,6 +16,14 @@ const deletePost = async (req, res) => {
       adminId: req.admin._id,
       action: `Deleted post ${req.params.id}`,
     });
+
+    // Send email notification
+    await sendEmail({
+      email: req.admin.email,
+      subject: "Post Deleted",
+      message: `The post titled "${post.title}" with ID ${post._id} has been deleted.`,
+    });
+
     res.status(200).json({
       message: "Post deleted successfully",
       post: {
@@ -38,6 +47,14 @@ const deleteComment = async (req, res) => {
       adminId: req.admin._id,
       action: `Deleted comment ${req.params.id}`,
     });
+
+    // Send email notification
+    await sendEmail({
+      email: req.admin.email,
+      subject: "Comment Deleted",
+      message: `The comment with ID ${comment._id} has been deleted. Content: "${comment.content}"`,
+    });
+
     res.status(200).json({
       message: "Comment deleted successfully",
       comment: {
@@ -61,6 +78,14 @@ const deleteUser = async (req, res) => {
       adminId: req.admin._id,
       action: `Deleted user ${req.params.id}`,
     });
+
+    // Send email notification
+    await sendEmail({
+      email: req.admin.email,
+      subject: "User Deleted",
+      message: `The user with email "${user.email}" and ID ${user._id} has been deleted.`,
+    });
+
     res.status(200).json({
       message: "User deleted successfully",
       user: {
@@ -107,6 +132,13 @@ const deleteCategory = async (req, res) => {
     await ActivityLog.create({
       adminId: req.admin._id,
       action: `Deleted category ${id}`,
+    });
+
+    // Send email notification
+    await sendEmail({
+      email: req.admin.email,
+      subject: "Category Deleted",
+      message: `The category named "${category.name}" with ID ${category._id} has been deleted.`,
     });
 
     res.status(200).json({
