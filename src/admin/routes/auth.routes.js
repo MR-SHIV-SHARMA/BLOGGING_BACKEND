@@ -51,4 +51,7 @@ router.post("/request-password-reset", adminRateLimiter, requestPasswordReset);
 // Reset password with token
 router.put("/reset-password/:token", adminRateLimiter, resetPasswordWithToken);
 
+// Refresh Access Token
+router.post("/refresh-access-token", adminRateLimiter, refreshAccessToken);
+
 export default router;
