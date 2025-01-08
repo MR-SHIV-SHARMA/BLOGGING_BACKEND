@@ -1,5 +1,4 @@
 import { Admin } from "../models/admin.models.js";
-import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { ActivityLog } from "../models/activityLog.models.js";
 import { apiError } from "../utils/apiError.js";
@@ -205,12 +204,15 @@ const requestPasswordReset = asyncHandler(async (req, res) => {
   const resetToken = crypto.randomBytes(32).toString("hex");
   const resetTokenExpiry = Date.now() + 3600000; // 1 hour
 
-  admin.resetPasswordToken = resetToken;
+  admin.resetPasswordToken = crypto
+    .createHash("sha256")
+    .update(resetToken)
+    .digest("hex");
   admin.resetPasswordExpiry = resetTokenExpiry;
   await admin.save({ validateBeforeSave: false });
 
-  const resetUrl = `${req.protocol}://${req.get("host")}/api/admin/reset-password/${resetToken}`;
-  const message = `Dear ${admin.name},\n\nYou have requested a password reset. Please click the link below to reset your password:\n${resetUrl}\n\nIf you did not request this, please ignore this email.`;
+  const resetUrl = `${req.protocol}://${req.get("host")}/auth/reset-password/${resetToken}`;
+  const message = `Dear ${admin.name || admin.email},\n\nYou have requested a password reset. Please click the link below to reset your password:\n${resetUrl}\n\nIf you did not request this, please ignore this email.`;
 
   await sendEmail({
     email: admin.email,
@@ -223,7 +225,7 @@ const requestPasswordReset = asyncHandler(async (req, res) => {
     action: "Requested password reset",
   });
 
-  res.status(200).json({ message: "Email sent" });
+  res.status(200).json({ message: "Password reset email sent successfully" });
 });
 
 // Reset Password with Token
@@ -239,10 +241,10 @@ const resetPasswordWithToken = asyncHandler(async (req, res) => {
   });
 
   if (!admin) {
-    throw new apiError(400, "Invalid or expired token");
+    throw new apiError(400, "Invalid or expired reset token");
   }
 
-  admin.password = await bcrypt.hash(newPassword, 10);
+  admin.password = newPassword;
   admin.resetPasswordToken = undefined;
   admin.resetPasswordExpiry = undefined;
   await admin.save();
@@ -252,8 +254,8 @@ const resetPasswordWithToken = asyncHandler(async (req, res) => {
     action: "Reset password with token",
   });
 
-  // Send password reset confirmation email
-  const message = `Dear ${admin.name},\n\nYour password has been successfully reset. If this was not you, please contact support immediately.`;
+  const message = `Dear ${admin.name || admin.email},\n\nYour password has been successfully reset. If this was not you, please contact support immediately.`;
+
   await sendEmail({
     email: admin.email,
     subject: "Password Reset Confirmation",
@@ -278,7 +280,7 @@ const resetPassword = asyncHandler(async (req, res) => {
     throw new apiError(401, "Current password is incorrect");
   }
 
-  admin.password = await bcrypt.hash(newPassword, 10);
+  admin.password = newPassword;
   await admin.save();
 
   await ActivityLog.create({
@@ -287,7 +289,7 @@ const resetPassword = asyncHandler(async (req, res) => {
   });
 
   // Send password reset confirmation email
-  const message = `Dear ${admin.name},\n\nYour password has been successfully changed. If this was not you, please contact support immediately.`;
+  const message = `Dear ${admin.email},\n\nYour password has been successfully changed. If this was not you, please contact support immediately.`;
   await sendEmail({
     email: admin.email,
     subject: "Password Changed",

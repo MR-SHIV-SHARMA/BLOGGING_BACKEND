@@ -3,6 +3,7 @@ import session from "express-session";
 import {
   login,
   logout,
+  refreshAccessToken,
   resetPassword,
   requestPasswordReset,
   resetPasswordWithToken,
@@ -13,6 +14,7 @@ import authenticateAdmin from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
+// Session configuration
 router.use(
   session({
     secret: process.env.SESSION_SECRET,
@@ -44,9 +46,9 @@ router.post(
 );
 
 // Request password reset
-router.post("/request-password-reset", requestPasswordReset);
+router.post("/request-password-reset", adminRateLimiter, requestPasswordReset);
 
 // Reset password with token
-router.put("/reset-password/:token", resetPasswordWithToken);
+router.put("/reset-password/:token", adminRateLimiter, resetPasswordWithToken);
 
 export default router;
