@@ -23,6 +23,10 @@ const userSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "Profile",
     },
+    isVerified: {
+      type: Boolean,
+      default: false,
+    },
     avatar: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Profile",
@@ -81,6 +85,12 @@ userSchema.methods.generateRefreshToken = function () {
       expiresIn: process.env.REFRESH_TOKEN_EXPIRY,
     }
   );
+};
+
+userSchema.methods.generateVerificationToken = function () {
+  return jwt.sign({ _id: this._id }, process.env.VERIFICATION_TOKEN_SECRET, {
+    expiresIn: "1h",
+  });
 };
 
 export const User = mongoose.model("User", userSchema);
