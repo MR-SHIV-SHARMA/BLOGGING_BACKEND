@@ -144,6 +144,11 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
     throw new apiError(401, "Unauthorized request");
   }
 
+  const options = {
+    httpOnly: true,
+    secure: true,
+  };
+
   try {
     const decodedToken = jwt.verify(
       incomingRefreshToken,
@@ -151,39 +156,39 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
     );
     const admin = await Admin.findById(decodedToken?._id);
 
-    if (!admin || incomingRefreshToken !== admin?.refreshToken) {
-      throw new apiError(401, "Invalid or expired refresh token");
+    if (!admin) {
+      throw new apiError(401, "Invalid refresh token");
     }
 
-    const options = {
-      httpOnly: true,
-      secure: true,
-    };
+    // Check if the incoming refresh token matches the stored refresh token
+    if (incomingRefreshToken !== admin?.refreshToken) {
+      // Generate new tokens if the refresh token is expired or used
+      const { accessToken, refreshToken } =
+        await generateAccessTokensAndRefreshTokens(admin._id);
+      return res
+        .status(200)
+        .cookie("accessToken", accessToken, options)
+        .cookie("refreshToken", refreshToken, options)
+        .json(
+          new apiResponse(
+            200,
+            { accessToken, refreshToken },
+            "Access Token Refreshed"
+          )
+        );
+    }
 
-    const { accessToken, newRefreshToken } =
+    const { accessToken, refreshToken } =
       await generateAccessTokensAndRefreshTokens(admin._id);
-
-    await ActivityLog.create({
-      adminId: admin._id,
-      action: "Refreshed access token",
-    });
-
-    // Send refresh token email notification
-    const message = `Dear ${admin.name},\n\nYour access token was refreshed. If this was not you, please contact support immediately.`;
-    await sendEmail({
-      email: admin.email,
-      subject: "Access Token Refreshed",
-      message,
-    });
 
     return res
       .status(200)
       .cookie("accessToken", accessToken, options)
-      .cookie("refreshToken", newRefreshToken, options)
+      .cookie("refreshToken", refreshToken, options)
       .json(
         new apiResponse(
           200,
-          { accessToken, refreshToken: newRefreshToken },
+          { accessToken, refreshToken },
           "Access Token Refreshed"
         )
       );
