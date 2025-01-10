@@ -1,24 +1,25 @@
-import { User } from "../Models/user.models";
+import { User } from "../Models/user.models.js";
 import nodemailer from "nodemailer";
 import bcryptjs from "bcryptjs";
 
-export const sendEmail = async ({ email, emailType, userId, message }) => {
+export const sendEmail = async ({
+  email,
+  emailType,
+  userId,
+  message,
+  token,
+}) => {
   try {
-    let hashedToken = null;
-
-    if (userId) {
-      hashedToken = await bcryptjs.hash(userId.toString(), 10);
-      if (emailType === "VERIFY") {
-        await User.findByIdAndUpdate(userId, {
-          verifyToken: hashedToken,
-          verifyTokenExpiry: Date.now() + 3600000,
-        });
-      } else if (emailType === "RESET") {
-        await User.findByIdAndUpdate(userId, {
-          forgotPasswordToken: hashedToken,
-          forgotPasswordTokenExpiry: Date.now() + 3600000,
-        });
+    if (userId && emailType === "VERIFY") {
+      const user = await User.findById(userId);
+      
+      if (!user) {
+        throw new Error("उपयोगकर्ता नहीं मिला");
       }
+
+      user.verifyToken = token;
+      user.verifyTokenExpiry = new Date(Date.now() + 3600000); // 1 hour
+      await user.save();
     }
 
     const transport = nodemailer.createTransport({
@@ -36,22 +37,18 @@ export const sendEmail = async ({ email, emailType, userId, message }) => {
     const mailOptions = {
       from: "shiv@gmail.com",
       to: email,
-      subject: emailType
-        ? emailType === "VERIFY"
-          ? "Verify your email"
-          : "Reset your password"
-        : "Default Super User Created",
-      html: message
-        ? message
-        : `<p>Click <a href="${process.env.DOMAIN}/verifyemail?token=${hashedToken}">here</a> to ${
-            emailType === "VERIFY" ? "verify your email" : "reset your password"
-          } or copy and paste the link below in your browser. <br>${process.env.DOMAIN}/verifyemail?token=${hashedToken}</p>`,
+      subject: emailType === "VERIFY" ? "ईमेल सत्यापित करें" : "पासवर्ड रीसेट करें",
+      html: `<p>
+        <a href="${process.env.DOMAIN}/api/v1/users/verify-email?token=${token}">यहाँ क्लिक करें</a> 
+        ${emailType === "VERIFY" ? "ईमेल सत्यापित करने" : "पासवर्ड रीसेट करने"} के लिए या नीचे दिए गए लिंक को अपने ब्राउज़र में कॉपी-पेस्ट करें।
+        <br>
+        ${process.env.DOMAIN}/api/v1/users/verify-email?token=${token}
+      </p>`,
     };
 
     const mailResponse = await transport.sendMail(mailOptions);
     return mailResponse;
   } catch (error) {
-    console.error("Error sending email:", error.message);
     throw new Error(error.message);
   }
 };

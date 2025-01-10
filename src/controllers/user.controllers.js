@@ -4,6 +4,7 @@ import { apiError } from "../utils/apiError.js";
 import { apiResponse } from "../utils/apiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { Profile } from "../Models/profile.models.js";
+import { sendEmail } from "../helpers/mailer.js";
 
 // Generate Access and Refresh Tokens
 const generateAccessTokensAndRefreshTokens = async (userId) => {
@@ -24,11 +25,11 @@ const generateAccessTokensAndRefreshTokens = async (userId) => {
 // User Registration
 const registerUser = asyncHandler(async (req, res) => {
   const { username, email, password } = req.body;
-  if ([username, email, password].some((fildes) => fildes?.trim() === "")) {
+
+  if ([username, email, password].some((field) => field?.trim() === "")) {
     throw new apiError(422, "Please fill in all the required fields");
   }
 
-  // Check if user already exists
   const existedUser = await User.findOne({
     $or: [{ username }, { email }],
   });
@@ -40,24 +41,37 @@ const registerUser = asyncHandler(async (req, res) => {
     );
   }
 
-  // Create new user
   const user = await User.create({
     email,
     username,
     password,
   });
 
-  const createdUser = await User.findById(user._id).select(
-    "-password -refreshToken"
-  );
+  // Generate verification token
+  const verificationToken = user.generateVerificationToken();
+  user.verifyToken = verificationToken; // Set the verification token
+  user.verifyTokenExpiry = Date.now() + 3600000; // 1 hour validity
+  await user.save({ validateBeforeSave: false });
 
-  if (!createdUser) {
-    throw new apiError(500, "Failed to register user. Please try again later");
-  }
+  console.log("Generated verification token:", verificationToken);
+
+  await sendEmail({
+    email,
+    emailType: "VERIFY",
+    userId: user._id,
+    token: verificationToken,
+  });
 
   return res
     .status(201)
-    .json(new apiResponse(201, createdUser, "User created successfully", true));
+    .json(
+      new apiResponse(
+        201,
+        user,
+        "User created successfully. Please check your email to verify your account.",
+        true
+      )
+    );
 });
 
 // User Login
@@ -74,6 +88,11 @@ const loginUser = asyncHandler(async (req, res) => {
 
   if (!user) {
     throw new apiError(401, "Invalid credentials. Please try again");
+  }
+
+  // Check if the user is verified
+  if (!user.isVerified) {
+    throw new apiError(403, "Please verify your email before logging in.");
   }
 
   const isPasswordValid = await user.isPasswordCorrect(password);
@@ -319,6 +338,88 @@ const getUserFollowProfile = asyncHandler(async (req, res) => {
     );
 });
 
+// Email Verification
+const verifyEmail = asyncHandler(async (req, res) => {
+  try {
+    const { token } = req.query;
+
+    if (!token) {
+      throw new apiError(400, "टोकन आवश्यक है");
+    }
+
+    let decoded;
+    try {
+      decoded = jwt.verify(token, process.env.VERIFICATION_TOKEN_SECRET);
+    } catch (error) {
+      throw new apiError(400, "अमान्य टोकन");
+    }
+
+    // Find the user by ID
+    const user = await User.findById(decoded._id);
+
+    if (!user) {
+      throw new apiError(404, "उपयोगकर्ता नहीं मिला");
+    }
+
+    // Check if user is already verified
+    if (user.isVerified) {
+      return res
+        .status(200)
+        .json(
+          new apiResponse(200, { success: true }, "ईमेल पहले से सत्यापित है")
+        );
+    }
+
+    // Check token match and expiry
+    if (user.verifyToken !== token) {
+      throw new apiError(400, "अमान्य टोकन");
+    }
+
+    if (!user.verifyTokenExpiry || user.verifyTokenExpiry < Date.now()) {
+      throw new apiError(400, "टोकन समाप्त हो गया है");
+    }
+
+    // Verify the user
+    user.isVerified = true;
+    user.verifyToken = undefined;
+    user.verifyTokenExpiry = undefined;
+    await user.save();
+
+    return res
+      .status(200)
+      .json(
+        new apiResponse(
+          200,
+          { success: true },
+          "ईमेल सफलतापूर्वक सत्यापित किया गया"
+        )
+      );
+  } catch (error) {
+    console.log("Verification error:", error);
+    if (error instanceof apiError) {
+      throw error;
+    }
+    throw new apiError(500, "सत्यापन में त्रुटि हुई");
+  }
+});
+
+// Password Reset
+const resetPassword = asyncHandler(async (req, res) => {
+  const { email, newPassword } = req.body;
+  const user = await User.findOne({ email });
+
+  if (!user) {
+    throw new apiError(404, "User not found");
+  }
+
+  user.password = newPassword;
+  await user.save({ validateBeforeSave: false });
+
+  return res
+    .status(200)
+    .json(new apiResponse(200, {}, "Password reset successfully"));
+});
+
 export {
   registerUser,
   loginUser,
@@ -328,4 +429,6 @@ export {
   getCurrentUser,
   updateAccountDetails,
   getUserFollowProfile,
+  verifyEmail,
+  resetPassword,
 };

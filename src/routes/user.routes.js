@@ -33,6 +33,6 @@ router.route("/f/:username").get(verifyJWT, getUserFollowProfile);
 
 router.route("/reset-password").post(resetPassword);
 
-router.route("/verify-email").post(verifyEmail);
+router.route("/verify-email").get(verifyEmail);
 
 export default router;
