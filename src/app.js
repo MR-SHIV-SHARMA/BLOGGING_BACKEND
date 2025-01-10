@@ -61,31 +61,40 @@ app.use("/content", contentRoutes, errorHandler);
 app.use("/activity", activityRoutes, errorHandler);
 app.use("/super-admin", superAdminRoutes, errorHandler);
 
-// user block
-app.use("/api/v1/account", accountRouter);
+// User Account & Authentication Routes
+// -> routes/user/account/
+app.use("/api/v1/user/account", accountRouter);
 
-app.use("/api/v1/auth", authRouter);
-app.use("/api/v1/password", passwordRouter);
+// -> routes/user/auth/
+app.use("/api/v1/auth/auth", authRouter);
+app.use("/api/v1/auth/password", passwordRouter);
 
-app.use("/api/v1/view", viewRouter);
-app.use("/api/v1/media", mediaRouter);
+// User Profile Management Routes
+// -> routes/user/profile/
+app.use("/api/v1/user/profile/view", viewRouter);
+app.use("/api/v1/user/profile/media", mediaRouter);
 
-// content block
-app.use("/api/v1/tag", tagRouter);
-app.use("/api/v1/post", postRouter);
-app.use("/api/v1/comment", commentRouter);
+// Content Management Routes
+// -> routes/content/
+app.use("/api/v1/content/tags", tagRouter);
+app.use("/api/v1/content/posts", postRouter);
+app.use("/api/v1/content/comments", commentRouter);
 
-// interaction block
-app.use("/api/v1/like", likeRouter);
-app.use("/api/v1/follow", followRouter);
-app.use("/api/v1/bookmark", bookmarkRouter);
-app.use("/api/v1/notification", notificationRouter);
+// User Interaction Routes
+// -> routes/interaction/
+app.use("/api/v1/interactions/likes", likeRouter);
+app.use("/api/v1/interactions/follows", followRouter);
+app.use("/api/v1/interactions/bookmarks", bookmarkRouter);
+app.use("/api/v1/interactions/notifications", notificationRouter);
 
-// common block
-app.use("/api/v1/searchHistory", searchHistoryRouter);
+// Common Functionality Routes
+// -> routes/common/search/
+app.use("/api/v1/common/search/search-history", searchHistoryRouter);
 
-app.use("/api/v1/postCategory", postCategoryRouter);
-app.use("/api/v1/manageCategory", manageCategoryRouter);
+// Category Management Routes
+// -> routes/common/category/
+app.use("/api/v1/common/categories/posts", postCategoryRouter);
+app.use("/api/v1/common/categories/manage", manageCategoryRouter);
 
 // Initialize cron jobs
 initCronJobs();
