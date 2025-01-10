@@ -626,52 +626,6 @@ const restoreAccount = asyncHandler(async (req, res) => {
   }
 });
 
-// // Add new function to resend restoration link
-// const resendRestorationLink = asyncHandler(async (req, res) => {
-//   const { email, username } = req.body;
-
-//   if (!email && !username) {
-//     throw new apiError(400, "Email or username is required");
-//   }
-
-//   // Find deactivated user
-//   const user = await User.findOne({
-//     $or: [{ email }, { username }],
-//     isDeactivated: true,
-//     restorationDeadline: { $gt: new Date() },
-//   });
-
-//   if (!user) {
-//     throw new apiError(
-//       404,
-//       "No deactivated account found or restoration period has expired"
-//     );
-//   }
-
-//   // Generate new restoration token
-//   const restorationToken = user.generateVerificationToken();
-
-//   // Send new restoration email
-//   await sendEmail({
-//     email: user.email,
-//     emailType: "DELETE",
-//     userId: user._id,
-//     message: "Account restoration link",
-//     token: restorationToken,
-//     restorationDeadline: user.restorationDeadline,
-//   });
-
-//   return res
-//     .status(200)
-//     .json(
-//       new apiResponse(
-//         200,
-//         {},
-//         "New restoration link has been sent to your registered email address"
-//       )
-//     );
-// });
-
 // Add requestAccountRestoration function
 const requestAccountRestoration = asyncHandler(async (req, res) => {
   const { email, username } = req.body;
