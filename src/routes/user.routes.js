@@ -13,6 +13,7 @@ import {
   resetPasswordWithToken,
   deleteUserAccount,
   restoreAccount,
+  requestAccountRestoration,
 } from "../controllers/user.controllers.js";
 import verifyJWT from "../middlewares/auth.middlewares.js";
 
@@ -46,5 +47,7 @@ router
 router.route("/delete-account").delete(verifyJWT, deleteUserAccount);
 
 router.route("/restore-account/:token").get(restoreAccount);
+
+router.route("/request-restoration").post(requestAccountRestoration);
 
 export default router;

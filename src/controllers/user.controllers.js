@@ -79,7 +79,7 @@ const loginUser = asyncHandler(async (req, res) => {
   const { username, password, email } = req.body;
 
   if (!(username || email)) {
-    throw new apiError(422, "Username and email are required");
+    throw new apiError(422, "Username or email is required");
   }
 
   const user = await User.findOne({
@@ -87,7 +87,22 @@ const loginUser = asyncHandler(async (req, res) => {
   });
 
   if (!user) {
-    throw new apiError(401, "Invalid credentials. Please try again");
+    throw new apiError(401, "Invalid credentials");
+  }
+
+  // Check if account is deactivated
+  if (user.isDeactivated) {
+    // Check if restoration period has expired
+    if (user.restorationDeadline && user.restorationDeadline < new Date()) {
+      throw new apiError(
+        410, // Gone status code
+        "This account has been permanently deleted due to inactivity for more than 30 days"
+      );
+    }
+    throw new apiError(
+      403,
+      "This account has been deactivated. Please restore it first to continue"
+    );
   }
 
   // Check if the user is verified
@@ -529,20 +544,18 @@ const deleteUserAccount = asyncHandler(async (req, res) => {
 
   const userEmail = user.email;
 
-  // Instead of deleting, mark as deactivated and store deactivation time
+  // Mark account as deactivated
   user.isDeactivated = true;
   user.deactivatedAt = new Date();
-  // Store account data for potential restoration (30 days window)
   user.restorationDeadline = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days
   await user.save();
 
-  // Send email with restoration instructions
+  // Send deletion confirmation email
   await sendEmail({
     email: userEmail,
-    emailType: "DELETE",
+    emailType: "ACCOUNT_DELETED",
     userId: user._id,
-    message: "Your account has been deactivated.",
-    token: user.generateVerificationToken() // For restoration link
+    message: "Your account has been deactivated",
   });
 
   const options = {
@@ -554,7 +567,13 @@ const deleteUserAccount = asyncHandler(async (req, res) => {
     .status(200)
     .clearCookie("accessToken", options)
     .clearCookie("refreshToken", options)
-    .json(new apiResponse(200, {}, "Account successfully deactivated. Check your email for restoration instructions."));
+    .json(
+      new apiResponse(
+        200,
+        {},
+        "Account successfully deactivated. You can restore it within 30 days."
+      )
+    );
 });
 
 // Add restore account function
@@ -567,14 +586,17 @@ const restoreAccount = asyncHandler(async (req, res) => {
 
   try {
     const decoded = jwt.verify(token, process.env.VERIFICATION_TOKEN_SECRET);
-    const user = await User.findOne({ 
+    const user = await User.findOne({
       _id: decoded._id,
       isDeactivated: true,
-      restorationDeadline: { $gt: new Date() }
+      restorationDeadline: { $gt: new Date() },
     });
 
     if (!user) {
-      throw new apiError(400, "Invalid restoration link or account restoration period has expired");
+      throw new apiError(
+        400,
+        "Invalid restoration link or account restoration period has expired"
+      );
     }
 
     // Restore account
@@ -587,16 +609,110 @@ const restoreAccount = asyncHandler(async (req, res) => {
     await sendEmail({
       email: user.email,
       emailType: "RESTORE",
-      message: "Your account has been successfully restored."
+      message: "Your account has been successfully restored.",
     });
 
     return res
       .status(200)
-      .json(new apiResponse(200, {}, "Account restored successfully. You can now login."));
-
+      .json(
+        new apiResponse(
+          200,
+          {},
+          "Account restored successfully. You can now login."
+        )
+      );
   } catch (error) {
     throw new apiError(400, "Invalid or expired restoration token");
   }
+});
+
+// // Add new function to resend restoration link
+// const resendRestorationLink = asyncHandler(async (req, res) => {
+//   const { email, username } = req.body;
+
+//   if (!email && !username) {
+//     throw new apiError(400, "Email or username is required");
+//   }
+
+//   // Find deactivated user
+//   const user = await User.findOne({
+//     $or: [{ email }, { username }],
+//     isDeactivated: true,
+//     restorationDeadline: { $gt: new Date() },
+//   });
+
+//   if (!user) {
+//     throw new apiError(
+//       404,
+//       "No deactivated account found or restoration period has expired"
+//     );
+//   }
+
+//   // Generate new restoration token
+//   const restorationToken = user.generateVerificationToken();
+
+//   // Send new restoration email
+//   await sendEmail({
+//     email: user.email,
+//     emailType: "DELETE",
+//     userId: user._id,
+//     message: "Account restoration link",
+//     token: restorationToken,
+//     restorationDeadline: user.restorationDeadline,
+//   });
+
+//   return res
+//     .status(200)
+//     .json(
+//       new apiResponse(
+//         200,
+//         {},
+//         "New restoration link has been sent to your registered email address"
+//       )
+//     );
+// });
+
+// Add requestAccountRestoration function
+const requestAccountRestoration = asyncHandler(async (req, res) => {
+  const { email, username } = req.body;
+
+  if (!email && !username) {
+    throw new apiError(400, "Email or username is required");
+  }
+
+  const user = await User.findOne({
+    $or: [{ email }, { username }],
+    isDeactivated: true,
+    restorationDeadline: { $gt: new Date() },
+  });
+
+  if (!user) {
+    throw new apiError(
+      404,
+      "No deactivated account found or restoration period has expired"
+    );
+  }
+
+  const restorationToken = user.generateVerificationToken();
+
+  // Send restoration link email
+  await sendEmail({
+    email: user.email,
+    emailType: "RESTORATION_REQUEST",
+    userId: user._id,
+    token: restorationToken,
+    restorationDeadline: user.restorationDeadline,
+  });
+
+  return res
+    .status(200)
+    .json(
+      new apiResponse(
+        200,
+        {},
+        "Account restoration instructions have been sent to your email"
+      )
+    );
 });
 
 export {
@@ -614,4 +730,5 @@ export {
   resetPasswordWithToken,
   deleteUserAccount,
   restoreAccount,
+  requestAccountRestoration,
 };

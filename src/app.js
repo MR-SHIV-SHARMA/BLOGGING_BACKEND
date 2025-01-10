@@ -2,6 +2,7 @@ import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import { errorHandler } from "./admin/middleware/errorHandler.js";
+import { initCronJobs } from "./utils/cronJobs.js";
 
 const app = express();
 
@@ -53,5 +54,8 @@ app.use("/api/v1/category", categoryRouter);
 app.use("/api/v1/bookmark", bookmarkRouter);
 app.use("/api/v1/notification", notificationRouter);
 app.use("/api/v1/searchHistory", searchHistoryRouter);
+
+// Initialize cron jobs
+initCronJobs();
 
 export { app };

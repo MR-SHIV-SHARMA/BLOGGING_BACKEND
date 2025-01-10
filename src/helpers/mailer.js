@@ -7,18 +7,21 @@ export const sendEmail = async ({
   userId,
   message,
   token,
+  restorationDeadline,
 }) => {
   try {
-    if (userId && emailType === "VERIFY") {
-      const user = await User.findById(userId);
-
-      if (!user) {
+    let user;
+    if (userId) {
+      user = await User.findById(userId);
+      if (!user && emailType === "VERIFY") {
         throw new Error("User not found");
       }
 
-      user.verifyToken = token;
-      user.verifyTokenExpiry = new Date(Date.now() + 3600000); // 1 hour
-      await user.save();
+      if (emailType === "VERIFY") {
+        user.verifyToken = token;
+        user.verifyTokenExpiry = new Date(Date.now() + 3600000); // 1 hour
+        await user.save();
+      }
     }
 
     const transport = nodemailer.createTransport({
@@ -34,42 +37,55 @@ export const sendEmail = async ({
     const mailOptions = {
       from: "shiv@gmail.com",
       to: email,
-      subject: emailType === "VERIFY" 
-          ? "Verify your email" 
-          : emailType === "RESET" 
-              ? "Reset your password"
-              : emailType === "DELETE"
-                  ? "Account Deactivation Confirmation"
-                  : "Account Restored Successfully",
-      html: emailType === "DELETE" 
+      subject:
+        emailType === "VERIFY"
+          ? "Verify your email"
+          : emailType === "RESET"
+            ? "Reset your password"
+            : emailType === "ACCOUNT_DELETED"
+              ? "Account Deactivation Confirmation"
+              : emailType === "RESTORATION_REQUEST"
+                ? "Account Restoration Instructions"
+                : "Account Restored Successfully",
+      html:
+        emailType === "ACCOUNT_DELETED"
           ? `<p>
-            Your account has been deactivated. It will be automatically deleted after 30 days.
-            <br><br>
-            If you want to restore your account, click the link below:
-            <br>
-            <a href="${process.env.DOMAIN}/api/v1/users/restore-account/${token}">Restore My Account</a>
-            <br><br>
-            This link will be valid for 30 days. After that, your account and all associated data will be permanently deleted.
-            <br><br>
-            If you did not request this action, please contact our support team immediately.
-          </p>`
-          : emailType === "RESTORE"
+              Your account has been deactivated as requested.
+              <br><br>
+              If you wish to restore your account within the next 30 days, you can do so by visiting:
+              <br>
+              ${process.env.DOMAIN}/restore-account
+              <br><br>
+              After 30 days, your account and all associated data will be permanently deleted.
+              <br><br>
+              If you did not request this action, please contact our support team immediately.
+            </p>`
+          : emailType === "RESTORATION_REQUEST"
+            ? `<p>
+                Here's your account restoration link:
+                <br><br>
+                <a href="${process.env.DOMAIN}/api/v1/users/restore-account/${token}">Restore My Account</a>
+                <br><br>
+                This link will be valid only until ${new Date(restorationDeadline).toLocaleString()}.
+                After that, your account and all associated data will be permanently deleted.
+              </p>`
+            : emailType === "RESTORE"
               ? `<p>
                   Your account has been successfully restored. You can now login with your previous credentials.
                   <br><br>
                   If you did not request this action, please contact our support team immediately.
                 </p>`
               : `<p>
-        <a href="${process.env.DOMAIN}/api/v1/users/${
-            emailType === "VERIFY" ? "verify-email" : "reset-password"
-        }?token=${token}">Click here</a> 
-        to ${emailType === "VERIFY" ? "verify your email" : "reset your password"} 
-        or copy and paste the link below in your browser.
-        <br>
-        ${process.env.DOMAIN}/api/v1/users/${
-            emailType === "VERIFY" ? "verify-email" : "reset-password"
-        }?token=${token}
-      </p>`,
+                  <a href="${process.env.DOMAIN}/api/v1/users/${
+                    emailType === "VERIFY" ? "verify-email" : "reset-password"
+                  }?token=${token}">Click here</a> 
+                  to ${emailType === "VERIFY" ? "verify your email" : "reset your password"} 
+                  or copy and paste the link below in your browser.
+                  <br>
+                  ${process.env.DOMAIN}/api/v1/users/${
+                    emailType === "VERIFY" ? "verify-email" : "reset-password"
+                  }?token=${token}
+                </p>`,
     };
 
     const mailResponse = await transport.sendMail(mailOptions);
