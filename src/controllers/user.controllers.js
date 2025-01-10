@@ -344,21 +344,21 @@ const verifyEmail = asyncHandler(async (req, res) => {
     const { token } = req.query;
 
     if (!token) {
-      throw new apiError(400, "टोकन आवश्यक है");
+      throw new apiError(400, "Token is required");
     }
 
     let decoded;
     try {
       decoded = jwt.verify(token, process.env.VERIFICATION_TOKEN_SECRET);
     } catch (error) {
-      throw new apiError(400, "अमान्य टोकन");
+      throw new apiError(400, "Invalid token");
     }
 
     // Find the user by ID
     const user = await User.findById(decoded._id);
 
     if (!user) {
-      throw new apiError(404, "उपयोगकर्ता नहीं मिला");
+      throw new apiError(404, "User not found");
     }
 
     // Check if user is already verified
@@ -366,17 +366,17 @@ const verifyEmail = asyncHandler(async (req, res) => {
       return res
         .status(200)
         .json(
-          new apiResponse(200, { success: true }, "ईमेल पहले से सत्यापित है")
+          new apiResponse(200, { success: true }, "Email already verified")
         );
     }
 
     // Check token match and expiry
     if (user.verifyToken !== token) {
-      throw new apiError(400, "अमान्य टोकन");
+      throw new apiError(400, "Invalid token");
     }
 
     if (!user.verifyTokenExpiry || user.verifyTokenExpiry < Date.now()) {
-      throw new apiError(400, "टोकन समाप्त हो गया है");
+      throw new apiError(400, "Token has expired");
     }
 
     // Verify the user
@@ -388,18 +388,14 @@ const verifyEmail = asyncHandler(async (req, res) => {
     return res
       .status(200)
       .json(
-        new apiResponse(
-          200,
-          { success: true },
-          "ईमेल सफलतापूर्वक सत्यापित किया गया"
-        )
+        new apiResponse(200, { success: true }, "Email verified successfully")
       );
   } catch (error) {
     console.log("Verification error:", error);
     if (error instanceof apiError) {
       throw error;
     }
-    throw new apiError(500, "सत्यापन में त्रुटि हुई");
+    throw new apiError(500, "Error in verification");
   }
 });
 

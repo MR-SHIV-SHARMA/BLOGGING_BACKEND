@@ -1,6 +1,5 @@
 import { User } from "../Models/user.models.js";
 import nodemailer from "nodemailer";
-import bcryptjs from "bcryptjs";
 
 export const sendEmail = async ({
   email,
@@ -12,9 +11,9 @@ export const sendEmail = async ({
   try {
     if (userId && emailType === "VERIFY") {
       const user = await User.findById(userId);
-      
+
       if (!user) {
-        throw new Error("उपयोगकर्ता नहीं मिला");
+        throw new Error("User not found");
       }
 
       user.verifyToken = token;
@@ -37,10 +36,12 @@ export const sendEmail = async ({
     const mailOptions = {
       from: "shiv@gmail.com",
       to: email,
-      subject: emailType === "VERIFY" ? "ईमेल सत्यापित करें" : "पासवर्ड रीसेट करें",
+      subject:
+        emailType === "VERIFY" ? "Verify your email" : "Reset your password",
       html: `<p>
-        <a href="${process.env.DOMAIN}/api/v1/users/verify-email?token=${token}">यहाँ क्लिक करें</a> 
-        ${emailType === "VERIFY" ? "ईमेल सत्यापित करने" : "पासवर्ड रीसेट करने"} के लिए या नीचे दिए गए लिंक को अपने ब्राउज़र में कॉपी-पेस्ट करें।
+        <a href="${process.env.DOMAIN}/api/v1/users/verify-email?token=${token}">Click here</a> 
+        to ${emailType === "VERIFY" ? "verify your email" : "reset your password"} 
+        or copy and paste the link below in your browser.
         <br>
         ${process.env.DOMAIN}/api/v1/users/verify-email?token=${token}
       </p>`,
