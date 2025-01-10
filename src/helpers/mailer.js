@@ -34,14 +34,17 @@ export const sendEmail = async ({
     const mailOptions = {
       from: "shiv@gmail.com",
       to: email,
-      subject:
-        emailType === "VERIFY" ? "Verify your email" : "Reset your password",
+      subject: emailType === "VERIFY" ? "Verify your email" : "Reset your password",
       html: `<p>
-        <a href="${process.env.DOMAIN}/api/v1/users/verify-email?token=${token}">Click here</a> 
+        <a href="${process.env.DOMAIN}/api/v1/users/${
+          emailType === "VERIFY" ? "verify-email" : "reset-password"
+        }?token=${token}">Click here</a> 
         to ${emailType === "VERIFY" ? "verify your email" : "reset your password"} 
         or copy and paste the link below in your browser.
         <br>
-        ${process.env.DOMAIN}/api/v1/users/verify-email?token=${token}
+        ${process.env.DOMAIN}/api/v1/users/${
+          emailType === "VERIFY" ? "verify-email" : "reset-password"
+        }?token=${token}
       </p>`,
     };
 

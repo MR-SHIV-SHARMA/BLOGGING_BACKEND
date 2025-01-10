@@ -9,7 +9,8 @@ import {
   updateAccountDetails,
   getUserFollowProfile,
   verifyEmail,
-  resetPassword,
+  forgotPassword,
+  resetPasswordWithToken,
 } from "../controllers/user.controllers.js";
 import verifyJWT from "../middlewares/auth.middlewares.js";
 
@@ -31,8 +32,13 @@ router.route("/update-Account-Details").patch(verifyJWT, updateAccountDetails);
 
 router.route("/f/:username").get(verifyJWT, getUserFollowProfile);
 
-router.route("/reset-password").post(resetPassword);
-
 router.route("/verify-email").get(verifyEmail);
+
+router.route("/forgot-password").post(forgotPassword);
+
+router
+  .route("/reset-password")
+  .get(resetPasswordWithToken)
+  .post(resetPasswordWithToken);
 
 export default router;

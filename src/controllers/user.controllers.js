@@ -415,6 +415,109 @@ const resetPassword = asyncHandler(async (req, res) => {
     .json(new apiResponse(200, {}, "Password reset successfully"));
 });
 
+// Forgot Password - Request
+const forgotPassword = asyncHandler(async (req, res) => {
+  const { email } = req.body;
+
+  if (!email) {
+    throw new apiError(400, "Email is required");
+  }
+
+  const user = await User.findOne({ email });
+
+  if (!user) {
+    throw new apiError(404, "User not found");
+  }
+
+  // Generate reset token
+  const resetToken = user.generateVerificationToken();
+
+  // Save reset token and expiry
+  user.forgotPasswordToken = resetToken;
+  user.forgotPasswordExpiry = Date.now() + 3600000; // 1 hour validity
+  await user.save({ validateBeforeSave: false });
+
+  // Send reset email
+  await sendEmail({
+    email,
+    emailType: "RESET",
+    userId: user._id,
+    token: resetToken,
+  });
+
+  return res
+    .status(200)
+    .json(
+      new apiResponse(200, {}, "Password reset instructions sent to your email")
+    );
+});
+
+// Reset Password with token
+const resetPasswordWithToken = asyncHandler(async (req, res) => {
+  // For GET request - verify token
+  if (req.method === "GET") {
+    const { token } = req.query;
+
+    if (!token) {
+      throw new apiError(400, "Reset token is required");
+    }
+
+    try {
+      const decoded = jwt.verify(token, process.env.VERIFICATION_TOKEN_SECRET);
+      const user = await User.findOne({
+        _id: decoded._id,
+        forgotPasswordToken: token,
+        forgotPasswordExpiry: { $gt: Date.now() },
+      });
+
+      if (!user) {
+        throw new apiError(400, "Invalid or expired reset token");
+      }
+
+      return res
+        .status(200)
+        .json(new apiResponse(200, { valid: true }, "Token is valid"));
+    } catch (error) {
+      throw new apiError(400, "Invalid or expired token");
+    }
+  }
+
+  // For POST request - reset password
+  const { newPassword } = req.body;
+  const token = req.query.token || req.body.token; // Get token from query or body
+
+  if (!token || !newPassword) {
+    throw new apiError(400, "Token and new password are required");
+  }
+
+  let decoded;
+  try {
+    decoded = jwt.verify(token, process.env.VERIFICATION_TOKEN_SECRET);
+  } catch (error) {
+    throw new apiError(400, "Invalid or expired token");
+  }
+
+  const user = await User.findOne({
+    _id: decoded._id,
+    forgotPasswordToken: token,
+    forgotPasswordExpiry: { $gt: Date.now() },
+  });
+
+  if (!user) {
+    throw new apiError(400, "Invalid or expired reset token");
+  }
+
+  // Update password
+  user.password = newPassword;
+  user.forgotPasswordToken = undefined;
+  user.forgotPasswordExpiry = undefined;
+  await user.save();
+
+  return res
+    .status(200)
+    .json(new apiResponse(200, {}, "Password reset successful"));
+});
+
 export {
   registerUser,
   loginUser,
@@ -426,4 +529,6 @@ export {
   getUserFollowProfile,
   verifyEmail,
   resetPassword,
+  forgotPassword,
+  resetPasswordWithToken,
 };
