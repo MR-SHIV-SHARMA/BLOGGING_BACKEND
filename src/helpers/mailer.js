@@ -34,17 +34,40 @@ export const sendEmail = async ({
     const mailOptions = {
       from: "shiv@gmail.com",
       to: email,
-      subject:
-        emailType === "VERIFY" ? "Verify your email" : "Reset your password",
-      html: `<p>
+      subject: emailType === "VERIFY" 
+          ? "Verify your email" 
+          : emailType === "RESET" 
+              ? "Reset your password"
+              : emailType === "DELETE"
+                  ? "Account Deactivation Confirmation"
+                  : "Account Restored Successfully",
+      html: emailType === "DELETE" 
+          ? `<p>
+            Your account has been deactivated. It will be automatically deleted after 30 days.
+            <br><br>
+            If you want to restore your account, click the link below:
+            <br>
+            <a href="${process.env.DOMAIN}/api/v1/users/restore-account/${token}">Restore My Account</a>
+            <br><br>
+            This link will be valid for 30 days. After that, your account and all associated data will be permanently deleted.
+            <br><br>
+            If you did not request this action, please contact our support team immediately.
+          </p>`
+          : emailType === "RESTORE"
+              ? `<p>
+                  Your account has been successfully restored. You can now login with your previous credentials.
+                  <br><br>
+                  If you did not request this action, please contact our support team immediately.
+                </p>`
+              : `<p>
         <a href="${process.env.DOMAIN}/api/v1/users/${
-          emailType === "VERIFY" ? "verify-email" : "reset-password"
+            emailType === "VERIFY" ? "verify-email" : "reset-password"
         }?token=${token}">Click here</a> 
         to ${emailType === "VERIFY" ? "verify your email" : "reset your password"} 
         or copy and paste the link below in your browser.
         <br>
         ${process.env.DOMAIN}/api/v1/users/${
-          emailType === "VERIFY" ? "verify-email" : "reset-password"
+            emailType === "VERIFY" ? "verify-email" : "reset-password"
         }?token=${token}
       </p>`,
     };

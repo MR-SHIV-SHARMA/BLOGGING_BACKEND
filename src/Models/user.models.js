@@ -59,6 +59,16 @@ const userSchema = new mongoose.Schema(
     forgotPasswordExpiry: {
       type: Date,
     },
+    isDeactivated: {
+      type: Boolean,
+      default: false
+    },
+    deactivatedAt: {
+      type: Date
+    },
+    restorationDeadline: {
+      type: Date
+    }
   },
   { timestamps: true }
 );

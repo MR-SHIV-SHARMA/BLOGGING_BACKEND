@@ -518,6 +518,87 @@ const resetPasswordWithToken = asyncHandler(async (req, res) => {
     .json(new apiResponse(200, {}, "Password reset successful"));
 });
 
+// Delete User Account
+const deleteUserAccount = asyncHandler(async (req, res) => {
+  const userId = req.user._id;
+
+  const user = await User.findById(userId);
+  if (!user) {
+    throw new apiError(404, "User not found");
+  }
+
+  const userEmail = user.email;
+
+  // Instead of deleting, mark as deactivated and store deactivation time
+  user.isDeactivated = true;
+  user.deactivatedAt = new Date();
+  // Store account data for potential restoration (30 days window)
+  user.restorationDeadline = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days
+  await user.save();
+
+  // Send email with restoration instructions
+  await sendEmail({
+    email: userEmail,
+    emailType: "DELETE",
+    userId: user._id,
+    message: "Your account has been deactivated.",
+    token: user.generateVerificationToken() // For restoration link
+  });
+
+  const options = {
+    httpOnly: true,
+    secure: true,
+  };
+
+  return res
+    .status(200)
+    .clearCookie("accessToken", options)
+    .clearCookie("refreshToken", options)
+    .json(new apiResponse(200, {}, "Account successfully deactivated. Check your email for restoration instructions."));
+});
+
+// Add restore account function
+const restoreAccount = asyncHandler(async (req, res) => {
+  const { token } = req.params;
+
+  if (!token) {
+    throw new apiError(400, "Restoration token is required");
+  }
+
+  try {
+    const decoded = jwt.verify(token, process.env.VERIFICATION_TOKEN_SECRET);
+    const user = await User.findOne({ 
+      _id: decoded._id,
+      isDeactivated: true,
+      restorationDeadline: { $gt: new Date() }
+    });
+
+    if (!user) {
+      throw new apiError(400, "Invalid restoration link or account restoration period has expired");
+    }
+
+    // Restore account
+    user.isDeactivated = false;
+    user.deactivatedAt = undefined;
+    user.restorationDeadline = undefined;
+    await user.save();
+
+    // Send confirmation email
+    await sendEmail({
+      email: user.email,
+      emailType: "RESTORE",
+      message: "Your account has been successfully restored."
+    });
+
+    return res
+      .status(200)
+      .json(new apiResponse(200, {}, "Account restored successfully. You can now login."));
+
+  } catch (error) {
+    throw new apiError(400, "Invalid or expired restoration token");
+  }
+});
+
 export {
   registerUser,
   loginUser,
@@ -531,4 +612,6 @@ export {
   resetPassword,
   forgotPassword,
   resetPasswordWithToken,
+  deleteUserAccount,
+  restoreAccount,
 };
