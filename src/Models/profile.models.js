@@ -14,15 +14,37 @@ const profileSchema = new mongoose.Schema(
     },
     fullname: {
       type: String,
-      required: true,
+      default: "",
     },
-    location: String,
-    hobbies: String,
-    bio: String,
-    link: String,
-    socialMedia: String,
-    avatar: String,
-    coverImage: String,
+    location: {
+      type: String,
+      default: "",
+    },
+    hobbies: {
+      type: [String],
+      default: [],
+    },
+    bio: {
+      type: String,
+      default: "",
+    },
+    link: {
+      type: String,
+      default: "",
+    },
+    socialMedia: {
+      type: Map,
+      of: String,
+      default: new Map(),
+    },
+    avatar: {
+      type: String,
+      default: "",
+    },
+    coverImage: {
+      type: String,
+      default: "",
+    },
     savedPost: [{ type: mongoose.Schema.Types.ObjectId, ref: "Post" }],
     follower: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
     following: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],

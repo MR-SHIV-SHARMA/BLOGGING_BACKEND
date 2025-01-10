@@ -30,30 +30,51 @@ const registerUser = asyncHandler(async (req, res) => {
     throw new apiError(422, "Please fill in all the required fields");
   }
 
-  const existedUser = await User.findOne({
-    $or: [{ username }, { email }],
-  });
+  // पहले चेक करें कि यूजर या प्रोफाइल पहले से मौजूद तो नहीं है
+  const [existedUser, existedProfile] = await Promise.all([
+    User.findOne({
+      $or: [{ username }, { email }],
+    }),
+    Profile.findOne({ username })
+  ]);
 
-  if (existedUser) {
+  if (existedUser || existedProfile) {
     throw new apiError(
       422,
       "Username or email already in use, please try a different one"
     );
   }
 
+  // Create user
   const user = await User.create({
     email,
     username,
     password,
   });
 
-  // Generate verification token
-  const verificationToken = user.generateVerificationToken();
-  user.verifyToken = verificationToken; // Set the verification token
-  user.verifyTokenExpiry = Date.now() + 3600000; // 1 hour validity
+  // Create default profile for the user
+  const userProfile = await Profile.create({
+    user: user._id,
+    username: user.username,
+    fullname: "",
+    location: "",
+    hobbies: [],
+    bio: "",
+    link: "",
+    socialMedia: new Map(),
+    avatar: "",
+    coverImage: "",
+  });
+
+  // प्रोफाइल आईडी को यूजर में सेट करें
+  user.profile = userProfile._id;
   await user.save({ validateBeforeSave: false });
 
-  console.log("Generated verification token:", verificationToken);
+  // Generate verification token
+  const verificationToken = user.generateVerificationToken();
+  user.verifyToken = verificationToken;
+  user.verifyTokenExpiry = Date.now() + 3600000; // 1 hour validity
+  await user.save({ validateBeforeSave: false });
 
   await sendEmail({
     email,
@@ -62,16 +83,22 @@ const registerUser = asyncHandler(async (req, res) => {
     token: verificationToken,
   });
 
-  return res
-    .status(201)
-    .json(
-      new apiResponse(
-        201,
-        user,
-        "User created successfully. Please check your email to verify your account.",
-        true
-      )
-    );
+  // Return both user and profile data
+  const userData = await User.findById(user._id)
+    .select("-password -refreshToken")
+    .populate("profile");
+
+  return res.status(201).json(
+    new apiResponse(
+      201,
+      {
+        user: userData,
+        profile: userProfile,
+      },
+      "User registered successfully. Please check your email to verify your account.",
+      true
+    )
+  );
 });
 
 // User Login

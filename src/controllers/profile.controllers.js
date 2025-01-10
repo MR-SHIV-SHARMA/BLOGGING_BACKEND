@@ -4,43 +4,6 @@ import { apiResponse } from "../utils/apiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { uploadFileToCloudinary } from "../utils/cloudinary.js";
 
-const createProfile = asyncHandler(async (req, res) => {
-  const { fullname, location, hobbies, bio, link, socialMedia } = req.body;
-
-  if (!fullname || !location || !hobbies || !bio || !link || !socialMedia) {
-    throw new apiError(422, "All fields are required.");
-  }
-
-  // Process uploaded files
-  const avatarLocalPath = req.files?.avatar?.[0]?.path;
-  const coverImageLocalPath = req.files?.coverImage?.[0]?.path;
-
-  // Upload to Cloudinary
-  const avatar = avatarLocalPath
-    ? await uploadFileToCloudinary(avatarLocalPath)
-    : null;
-  const coverImage = coverImageLocalPath
-    ? await uploadFileToCloudinary(coverImageLocalPath)
-    : null;
-
-  const profile = await Profile.create({
-    user: req.user._id, // Reference to User's ObjectId
-    username: req.user.username, // Ensure this is a string
-    fullname,
-    location,
-    hobbies,
-    bio,
-    link,
-    socialMedia,
-    avatar: avatar?.url || undefined,
-    coverImage: coverImage?.url || undefined,
-  });
-
-  return res
-    .status(201)
-    .json(new apiResponse(201, profile, "Profile created successfully."));
-});
-
 const getProfile = asyncHandler(async (req, res) => {
   const { username } = req.params;
 
@@ -142,54 +105,38 @@ const updateUserCoverImage = asyncHandler(async (req, res) => {
 const updateProfile = asyncHandler(async (req, res) => {
   const { fullname, location, hobbies, bio, link, socialMedia } = req.body;
 
-  // Ensure required fields are provided
-  if (
-    [fullname, location, hobbies, bio, link, socialMedia].some(
-      (field) => !field?.trim()
-    )
-  ) {
-    throw new apiError(422, "Please fill in all the required fields");
-  }
-
+  // सभी फील्ड्स ऑप्शनल हैं, इसलिए वैलिडेशन हटा दिया
   const update = {
-    fullname,
-    location,
-    hobbies,
-    bio,
-    link,
-    socialMedia,
+    ...(fullname && { fullname }),
+    ...(location && { location }),
+    ...(hobbies && { hobbies }),
+    ...(bio && { bio }),
+    ...(link && { link }),
+    ...(socialMedia && { socialMedia })
   };
 
   const profile = await Profile.findOneAndUpdate(
     { username: req.user.username },
     update,
     {
-      new: true, // Return the updated document
+      new: true,
     }
   );
 
   if (!profile) {
-    throw new apiError(500, "Failed to update the profile");
+    throw new apiError(404, "Profile not found");
   }
 
   return res.status(200).json(
     new apiResponse(
       200,
-      {
-        fullname: profile.fullname,
-        location: profile.location,
-        hobbies: profile.hobbies,
-        bio: profile.bio,
-        link: profile.link,
-        socialMedia: profile.socialMedia,
-      },
+      profile,
       "Profile updated successfully."
     )
   );
 });
 
 export {
-  createProfile,
   getProfile,
   updateUserAvatar,
   updateUserCoverImage,

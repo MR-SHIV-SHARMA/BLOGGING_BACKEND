@@ -1,6 +1,5 @@
 import express from "express";
 import {
-  createProfile,
   getProfile,
   updateUserAvatar,
   updateUserCoverImage,
@@ -27,21 +26,6 @@ const setProfile = async (req, res, next) => {
     next(error);
   }
 };
-
-// Create or update a profile
-router.route("/").post(
-  upload.fields([
-    {
-      name: "avatar",
-      maxCount: 1,
-    },
-    {
-      name: "coverImage",
-      maxCount: 1,
-    },
-  ]),
-  createProfile
-);
 
 // // Get a specific profile
 router.route("/:username").get(getProfile);

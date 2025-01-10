@@ -19,6 +19,10 @@ const userSchema = new mongoose.Schema(
       unique: true,
       trim: true,
     },
+    profile: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Profile"
+    },
     fullname: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Profile",
