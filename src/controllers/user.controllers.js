@@ -30,12 +30,12 @@ const registerUser = asyncHandler(async (req, res) => {
     throw new apiError(422, "Please fill in all the required fields");
   }
 
-  // पहले चेक करें कि यूजर या प्रोफाइल पहले से मौजूद तो नहीं है
+  // First check if user or profile already exists
   const [existedUser, existedProfile] = await Promise.all([
     User.findOne({
       $or: [{ username }, { email }],
     }),
-    Profile.findOne({ username })
+    Profile.findOne({ username }),
   ]);
 
   if (existedUser || existedProfile) {
@@ -66,7 +66,7 @@ const registerUser = asyncHandler(async (req, res) => {
     coverImage: "",
   });
 
-  // प्रोफाइल आईडी को यूजर में सेट करें
+  // Set profile ID in user document
   user.profile = userProfile._id;
   await user.save({ validateBeforeSave: false });
 
