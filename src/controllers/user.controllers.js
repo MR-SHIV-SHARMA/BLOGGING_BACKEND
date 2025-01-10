@@ -391,7 +391,6 @@ const verifyEmail = asyncHandler(async (req, res) => {
         new apiResponse(200, { success: true }, "Email verified successfully")
       );
   } catch (error) {
-    console.log("Verification error:", error);
     if (error instanceof apiError) {
       throw error;
     }
