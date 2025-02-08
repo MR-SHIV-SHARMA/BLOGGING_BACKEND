@@ -9,7 +9,7 @@ import verifyJWT from "../../../middlewares/auth.middlewares.js";
 const router = Router();
 
 // // Get a specific profile
-router.route("/:username").get(verifyJWT, getProfile);
+router.route("/").get(verifyJWT, getProfile);
 
 router.route("/current-user").post(verifyJWT, getCurrentUser);
 

@@ -10,19 +10,19 @@ import verifyJWT from "../../middlewares/auth.middlewares.js";
 
 const router = express.Router();
 
-router.use(verifyJWT); // Protect all routes
+// router.use(verifyJWT); // Protect all routes
 
 // Add a comment to a post
-router.route("/post/:postId").post(addComment);
+router.route("/post/:postId").post(verifyJWT, addComment);
 
 // Get comments for a post
 router.route("/post/comments/:postId").get(getCommentsForPost);
 
 // Update a comment
-router.route("/:commentId").put(updateComment);
+router.route("/:commentId").put(verifyJWT, updateComment);
 
 // Delete a comment
-router.route("/:commentId").delete(deleteComment);
+router.route("/:commentId").delete(verifyJWT, deleteComment);
 
 // Get all comments by a user
 router.route("/user/:authorId").get(getCommentsByUser);

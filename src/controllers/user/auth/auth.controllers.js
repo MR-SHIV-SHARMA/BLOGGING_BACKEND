@@ -76,12 +76,12 @@ const registerUser = asyncHandler(async (req, res) => {
   user.verifyTokenExpiry = Date.now() + 3600000; // 1 hour validity
   await user.save({ validateBeforeSave: false });
 
-  await sendEmail({
-    email,
-    emailType: "VERIFY",
-    userId: user._id,
-    token: verificationToken,
-  });
+  // await sendEmail({
+  //   email,
+  //   emailType: "VERIFY",
+  //   userId: user._id,
+  //   token: verificationToken,
+  // });
 
   // Return both user and profile data
   const userData = await User.findById(user._id)
@@ -133,9 +133,9 @@ const loginUser = asyncHandler(async (req, res) => {
   }
 
   // Check if the user is verified
-  if (!user.isVerified) {
-    throw new apiError(403, "Please verify your email before logging in.");
-  }
+  // if (!user.isVerified) {
+  //   throw new apiError(403, "Please verify your email before logging in.");
+  // }
 
   const isPasswordValid = await user.isPasswordCorrect(password);
 

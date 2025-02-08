@@ -8,21 +8,17 @@ import { sendEmail } from "../../../helpers/mailer.js";
 import { uploadFileToCloudinary } from "../../../utils/cloudinary.js";
 
 const getProfile = asyncHandler(async (req, res) => {
-  const { username } = req.params;
-
-  console.log(`Fetching profile for username: ${username}`);
-  console.log(`Type of username: ${typeof username}`);
-  console.log(`Length of username: ${username.length}`);
+  const userId = await User.findById(req.user.profile._id)
 
   // Fetch profile using the username field
-  const profile = await Profile.findOne({ username })
+  const profile = await Profile.findOne({ userId })
     .populate("user", "username email")
     .populate("savedPost", "name")
     .populate("follower", "name")
     .populate("following");
 
   if (!profile) {
-    console.error(`Profile not found for username: ${username}`);
+    console.error(`Profile not found for username: ${userId}`);
     throw new apiError(404, "Profile not found.");
   }
 

@@ -33,9 +33,8 @@ const profileSchema = new mongoose.Schema(
       default: "",
     },
     socialMedia: {
-      type: Map,
-      of: String,
-      default: new Map(),
+      type: String,
+      default: "",
     },
     avatar: {
       type: String,

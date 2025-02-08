@@ -1,10 +1,7 @@
-import jwt from "jsonwebtoken";
-// import { User } from "../../../Models/user.models.js";
 import { apiError } from "../../../utils/apiError.js";
 import { apiResponse } from "../../../utils/apiResponse.js";
 import { asyncHandler } from "../../../utils/asyncHandler.js";
 import { Profile } from "../../../Models/profile.models.js";
-// import { sendEmail } from "../../../helpers/mailer.js";
 import { uploadFileToCloudinary } from "../../../utils/cloudinary.js";
 
 // Update User Avatar
@@ -15,7 +12,7 @@ const updateUserAvatar = asyncHandler(async (req, res) => {
     throw new apiError(404, "Avatar file is missing");
   }
 
-  const user = await Profile.findById(req.profile._id);
+  const user = await Profile.findById(req.user.profile._id);
 
   if (!user) {
     throw new apiError(404, "User not found");
@@ -30,7 +27,7 @@ const updateUserAvatar = asyncHandler(async (req, res) => {
   }
 
   const updatedUser = await Profile.findByIdAndUpdate(
-    req.profile._id,
+    req.user.profile._id,
     { $set: { avatar: newAvatar.url } },
     { new: true }
   );
@@ -47,10 +44,10 @@ const updateUserCoverImage = asyncHandler(async (req, res) => {
   const coverImageLocalPath = req.file?.path;
 
   if (!coverImageLocalPath) {
-    throw new apiError(404, "Cover image file is missing");
+    throw new apiError(400, "Cover image file is missing");
   }
 
-  const user = await Profile.findById(req.profile._id);
+  const user = await Profile.findById(req.user.profile._id);
 
   if (!user) {
     throw new apiError(404, "User not found");
@@ -68,7 +65,7 @@ const updateUserCoverImage = asyncHandler(async (req, res) => {
   }
 
   const updatedUser = await Profile.findByIdAndUpdate(
-    req.profile._id,
+    req.user.profile._id,
     { $set: { coverImage: newCoverImage.url } },
     { new: true }
   );
@@ -80,11 +77,10 @@ const updateUserCoverImage = asyncHandler(async (req, res) => {
     );
 });
 
-// Update a profile
+// Update Profile
 const updateProfile = asyncHandler(async (req, res) => {
   const { fullname, location, hobbies, bio, link, socialMedia } = req.body;
 
-  // सभी फील्ड्स ऑप्शनल हैं, इसलिए वैलिडेशन हटा दिया
   const update = {
     ...(fullname && { fullname }),
     ...(location && { location }),
@@ -94,12 +90,15 @@ const updateProfile = asyncHandler(async (req, res) => {
     ...(socialMedia && { socialMedia }),
   };
 
-  const profile = await Profile.findOneAndUpdate(
-    { username: req.user.username },
+  const user = await Profile.findById(req.user.profile._id);
+  if (!user) {
+    throw new apiError(404, "User not found");
+  }
+
+  const profile = await Profile.findByIdAndUpdate(
+    req.user.profile._id, // Corrected from findOneAndUpdate to findByIdAndUpdate
     update,
-    {
-      new: true,
-    }
+    { new: true }
   );
 
   if (!profile) {
