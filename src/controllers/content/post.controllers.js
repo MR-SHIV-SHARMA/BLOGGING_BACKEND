@@ -155,56 +155,41 @@ const formatAndSaveContent = (content, formatOptions) => {
 
 // Create a new post
 const createPost = asyncHandler(async (req, res) => {
-  try {
-    const { title, content, categoryId, tagId } = req.body;
-    const userId = req.user?._id;
+  const { title, content, categoryId, tagId } = req.body;
+  const userId = req.user._id;
 
-    // ✅ Validate Required Fields
-    if (!title?.trim() || !content?.trim() || !categoryId) {
-      throw new apiError(422, "Title, content, and category are required.");
-    }
-
-    // ✅ Debugging: Log Uploaded Files
-    console.log("📂 Uploaded Files:", req.files);
-
-    // ✅ Handle Media Upload (Extract from `req.files`)
-    let mediaUrl = null;
-
-    if (req.files && req.files.media && req.files.media[0]) {
-      console.log("📂 Media File Found:", req.files.media[0].path);
-      mediaUrl = await uploadFileToCloudinary(req.files.media[0].path);
-      mediaUrl = mediaUrl?.url || null;
-    } else {
-      console.warn("⚠️ No media file received!");
-    }
-
-    // ✅ Format Content (if needed)
-    const formattedContent = formatAndSaveContent(content, req.body.formatOptions);
-
-    // ✅ Create Post
-    const post = await Post.create({
-      title,
-      content: formattedContent,
-      media: mediaUrl || undefined,
-      userId,
-      categories: [categoryId],
-      tags: tagId ? [tagId] : [],
-    });
-
-    // ✅ Update Category & Tag with the New Post
-    await Category.findByIdAndUpdate(categoryId, { $push: { posts: post._id } });
-    if (tagId) {
-      await Tag.findByIdAndUpdate(tagId, { $push: { posts: post._id } });
-    }
-
-    // ✅ Send Response
-    return res.status(201).json(new apiResponse(201, post, "Post created successfully."));
-  } catch (error) {
-    console.error("❌ Post Creation Error:", error);
-    return res.status(error.statusCode || 500).json(new apiResponse(error.statusCode || 500, {}, error.message));
+  if (!title?.trim() || !content?.trim()) {
+    throw new apiError(422, "Title, content, and category are required.");
   }
-});
 
+  // Handle optional media upload
+  const mediaPath = req.files?.media?.[0]?.path;
+
+  // Upload to Cloudinary
+  const media = mediaPath ? await uploadFileToCloudinary(mediaPath) : null;
+
+  const formattedContent = formatAndSaveContent(
+    content,
+    req.body.formatOptions
+  );
+
+  const post = await Post.create({
+    title,
+    content: formattedContent,
+    media: media?.url || undefined,
+    userId, // Assuming user is authenticated and attached to req
+    categories: [categoryId], // Correctly assign categoryId to categories array
+    tags: [tagId],
+  });
+
+  // Add the post to the category's posts array
+  await Category.findByIdAndUpdate(categoryId, { $push: { posts: post._id } });
+  await Tag.findByIdAndUpdate(tagId, { $push: { posts: post._id } });
+
+  return res
+    .status(201)
+    .json(new apiResponse(201, post, "Post created successfully."));
+});
 
 // Update a post
 const updatePost = asyncHandler(async (req, res) => {
