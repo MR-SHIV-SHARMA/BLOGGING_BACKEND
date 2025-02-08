@@ -6,6 +6,11 @@ dotenv.config({
   path: "./env",
 });
 
+// Root route
+app.get("/", (req, res) => {
+  res.json({ message: "Welcome to the API" });
+});
+
 connectDB()
   .then(() => {
     app.on("error", (err) => {
