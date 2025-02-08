@@ -154,41 +154,61 @@ const formatAndSaveContent = (content, formatOptions) => {
 };
 
 // Create a new post
-const createPost = asyncHandler(async (req, res) => {
-  const { title, content, categoryId, tagId } = req.body;
-  const userId = req.user._id;
+const createPost = asyncHandler(async (req, res, next) => {
+  try {
+    const { title, content, categoryId, tagId, formatOptions } = req.body;
+    const userId = req.user?._id;
 
-  if (!title?.trim() || !content?.trim()) {
-    throw new apiError(422, "Title, content, and category are required.");
+    if (!title?.trim() || !content?.trim() || !categoryId) {
+      throw new apiError(422, "Title, content, and category are required.");
+    }
+
+    // Handle optional media upload safely
+    const mediaPath = req.files?.media?.[0]?.path;
+    let media = null;
+
+    if (mediaPath) {
+      try {
+        media = await uploadFileToCloudinary(mediaPath);
+      } catch (error) {
+        return next(new apiError(500, "Failed to upload media."));
+      }
+    }
+
+    // Format content safely
+    let formattedContent;
+    try {
+      formattedContent = formatAndSaveContent(content, formatOptions);
+    } catch (error) {
+      return next(new apiError(500, "Error processing content formatting."));
+    }
+
+    // Create the post
+    const post = await Post.create({
+      title,
+      content: formattedContent,
+      media: media?.url || undefined,
+      userId,
+      categories: [categoryId],
+      tags: tagId ? [tagId] : [],
+    });
+
+    // Check if category and tag exist before updating
+    if (categoryId) {
+      await Category.findByIdAndUpdate(categoryId, {
+        $push: { posts: post._id },
+      });
+    }
+    if (tagId) {
+      await Tag.findByIdAndUpdate(tagId, { $push: { posts: post._id } });
+    }
+
+    return res
+      .status(201)
+      .json(new apiResponse(201, post, "Post created successfully."));
+  } catch (error) {
+    next(error); // Pass error to global error handler
   }
-
-  // Handle optional media upload
-  const mediaPath = req.files?.media?.[0]?.path;
-
-  // Upload to Cloudinary
-  const media = mediaPath ? await uploadFileToCloudinary(mediaPath) : null;
-
-  const formattedContent = formatAndSaveContent(
-    content,
-    req.body.formatOptions
-  );
-
-  const post = await Post.create({
-    title,
-    content: formattedContent,
-    media: media?.url || undefined,
-    userId, // Assuming user is authenticated and attached to req
-    categories: [categoryId], // Correctly assign categoryId to categories array
-    tags: [tagId],
-  });
-
-  // Add the post to the category's posts array
-  await Category.findByIdAndUpdate(categoryId, { $push: { posts: post._id } });
-  await Tag.findByIdAndUpdate(tagId, { $push: { posts: post._id } });
-
-  return res
-    .status(201)
-    .json(new apiResponse(201, post, "Post created successfully."));
 });
 
 // Update a post
