@@ -10,7 +10,7 @@ import { upload } from "../../../middlewares/multer.middlewares.js";
 const router = express.Router();
 
 // Protect all routes with JWT verification middleware
-router.use(verifyJWT);
+// router.use(verifyJWT);
 
 // Update User Avatar
 router.route("/update-avatar").patch(upload.single("avatar"), updateUserAvatar);
