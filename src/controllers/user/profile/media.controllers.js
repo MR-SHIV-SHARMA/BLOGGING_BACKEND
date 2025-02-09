@@ -20,23 +20,32 @@ const updateUserAvatar = asyncHandler(async (req, res) => {
 
   const oldAvatarUrl = user.avatar;
 
-  const newAvatar = await uploadFileToCloudinary(avatarLocalPath, oldAvatarUrl);
-
-  if (!newAvatar.url) {
-    throw new apiError(400, "Error while uploading avatar");
-  }
-
-  const updatedUser = await Profile.findByIdAndUpdate(
-    req.user.profile._id,
-    { $set: { avatar: newAvatar.url } },
-    { new: true }
-  );
-
-  return res
-    .status(200)
-    .json(
-      new apiResponse(200, updatedUser, "Avatar image updated successfully")
+  try {
+    const newAvatar = await uploadFileToCloudinary(
+      avatarLocalPath,
+      oldAvatarUrl
     );
+
+    // Ensure that newAvatar is valid and has a URL
+    if (!newAvatar || !newAvatar.url) {
+      throw new apiError(400, "Error while uploading avatar");
+    }
+
+    const updatedUser = await Profile.findByIdAndUpdate(
+      req.user.profile._id,
+      { $set: { avatar: newAvatar.url } },
+      { new: true }
+    );
+
+    return res
+      .status(200)
+      .json(
+        new apiResponse(200, updatedUser, "Avatar image updated successfully")
+      );
+  } catch (error) {
+    console.error("Cloudinary upload failed:", error);
+    throw new apiError(500, "Internal server error during avatar upload");
+  }
 });
 
 // Update User Cover Image

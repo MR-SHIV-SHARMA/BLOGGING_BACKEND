@@ -156,11 +156,12 @@ const formatAndSaveContent = (content, formatOptions) => {
 // Create a new post
 const createPost = asyncHandler(async (req, res, next) => {
   try {
-    const { title, content, categoryId, tagId, formatOptions } = req.body;
+    const { title, content } = req.body;
     const userId = req.user?._id;
 
-    if (!title?.trim() || !content?.trim() || !categoryId) {
-      throw new apiError(422, "Title, content, and category are required.");
+    // Check if title or content are missing
+    if (!title?.trim() || !content?.trim()) {
+      throw new apiError(422, "Title and content are required.");
     }
 
     // Handle optional media upload safely
@@ -175,33 +176,13 @@ const createPost = asyncHandler(async (req, res, next) => {
       }
     }
 
-    // Format content safely
-    let formattedContent;
-    try {
-      formattedContent = formatAndSaveContent(content, formatOptions);
-    } catch (error) {
-      return next(new apiError(500, "Error processing content formatting."));
-    }
-
-    // Create the post
+    // Create the post without category or tag
     const post = await Post.create({
       title,
-      content: formattedContent,
-      media: media?.url || undefined,
+      content,
+      media: media?.url || undefined, // Only include media if available
       userId,
-      categories: [categoryId],
-      tags: tagId ? [tagId] : [],
     });
-
-    // Check if category and tag exist before updating
-    if (categoryId) {
-      await Category.findByIdAndUpdate(categoryId, {
-        $push: { posts: post._id },
-      });
-    }
-    if (tagId) {
-      await Tag.findByIdAndUpdate(tagId, { $push: { posts: post._id } });
-    }
 
     return res
       .status(201)
