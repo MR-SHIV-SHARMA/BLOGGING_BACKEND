@@ -240,6 +240,26 @@ const updatePost = asyncHandler(async (req, res) => {
     .json(new apiResponse(200, updatedPost, "Post updated successfully."));
 });
 
+// Get all posts by the logged-in user
+const getPostsByUser = asyncHandler(async (req, res) => {
+  const userId = req.user?._id; // Assuming user info is saved in req.user after authentication
+
+  const posts = await Post.find({ userId })
+    .populate("userId", "username fullname avatar")
+    .populate("categories", "name")
+    .populate("tags", "name")
+    .populate("comments")
+    .populate("likes");
+
+  if (!posts || posts.length === 0) {
+    return res.status(404).json(new apiResponse(404, [], "No posts found."));
+  }
+
+  return res
+    .status(200)
+    .json(new apiResponse(200, posts, "Posts fetched successfully."));
+});
+
 // Get all posts
 const getAllPosts = asyncHandler(async (req, res) => {
   const { page = 1, limit = 10, search } = req.query;
@@ -289,20 +309,43 @@ const getPostById = asyncHandler(async (req, res) => {
 // Delete a post by ID
 const deletePostById = asyncHandler(async (req, res) => {
   const { postId } = req.params;
+  const userId = req.user?._id; // Logged-in user ID
 
   if (!mongoose.isValidObjectId(postId)) {
     throw new apiError(400, "Invalid post ID.");
   }
 
-  const deletedPost = await Post.findByIdAndDelete(postId);
-
-  if (!deletedPost) {
+  // Fetch the post and populate the userId field
+  const post = await Post.findById(postId).populate("userId");
+  if (!post) {
     throw new apiError(404, "Post not found.");
   }
 
+  // Ensure post has a userId field
+  if (!post.userId) {
+    throw new apiError(500, "Post data is corrupted. No owner found.");
+  }
+
+  // Ensure only the owner can delete the post
+  if (post.userId._id.toString() !== userId.toString()) {
+    throw new apiError(403, "You are not authorized to delete this post.");
+  }
+
+  // Delete the post
+  await Post.findByIdAndDelete(postId);
+
   return res
     .status(200)
-    .json(new apiResponse(200, deletedPost, "Post deleted successfully."));
+    .json(new apiResponse(200, null, post, "Post deleted successfully."));
 });
 
-export { createPost, updatePost, getAllPosts, getPostById, deletePostById };
+export {
+  createPost,
+  updatePost,
+  getPostsByUser,
+  getAllPosts,
+  getPostById,
+  deletePostById,
+};
+// 6778f3953098df1e51041868 tag
+// 67780b5499fa2aac4885318e cat

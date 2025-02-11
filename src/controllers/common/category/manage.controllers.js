@@ -28,11 +28,17 @@ const createCategory = asyncHandler(async (req, res) => {
 // Get All Categories
 const getAllCategories = asyncHandler(async (req, res) => {
   const categories = await Category.find();
+  const userId = req.user?._id;
 
   return res
     .status(200)
     .json(
-      new apiResponse(200, categories, "Categories retrieved successfully.")
+      new apiResponse(
+        200,
+        userId,
+        categories,
+        "Categories retrieved successfully."
+      )
     );
 });
 
