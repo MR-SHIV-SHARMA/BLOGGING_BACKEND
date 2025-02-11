@@ -156,31 +156,40 @@ const formatAndSaveContent = (content, formatOptions) => {
 // Create a new post
 const createPost = asyncHandler(async (req, res, next) => {
   try {
-    const { title, content } = req.body;
+    const { title, content, categoryId, tagId } = req.body;
     const userId = req.user?._id;
 
-    // Check if title or content are missing
-    if (!title?.trim() || !content?.trim()) {
-      throw new apiError(422, "Title and content are required.");
+    if (!title || !title.trim()) {
+      throw new apiError(422, "Title is required.");
+    }
+    if (!content || !content.trim()) {
+      throw new apiError(422, "Content is required.");
     }
 
-    // Handle optional media upload safely
-    const mediaPath = req.files?.media?.[0]?.path;
+    let categories;
+    if (!categoryId) {
+      throw new apiError(422, "At least one category is required.");
+    } else if (Array.isArray(categoryId)) {
+      categories = categoryId;
+    } else {
+      categories = [categoryId];
+    }
+
     let media = null;
+    const mediaPath = req.files?.media?.[0]?.path;
 
     if (mediaPath) {
-      try {
-        media = await uploadFileToCloudinary(mediaPath);
-      } catch (error) {
-        return next(new apiError(500, "Failed to upload media."));
-      }
+      media = await uploadFileToCloudinary(mediaPath).catch(error => {
+      });
     }
 
-    // Create the post without category or tag
+    // Create the post
     const post = await Post.create({
       title,
       content,
-      media: media?.url || undefined, // Only include media if available
+      media: media?.url || undefined,
+      categories,
+      tags: tagId ? [tagId] : [],
       userId,
     });
 
@@ -188,7 +197,7 @@ const createPost = asyncHandler(async (req, res, next) => {
       .status(201)
       .json(new apiResponse(201, post, "Post created successfully."));
   } catch (error) {
-    next(error); // Pass error to global error handler
+    next(error);
   }
 });
 
@@ -347,5 +356,3 @@ export {
   getPostById,
   deletePostById,
 };
-// 6778f3953098df1e51041868 tag
-// 67780b5499fa2aac4885318e cat
