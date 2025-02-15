@@ -6,9 +6,10 @@ import { asyncHandler } from "../../../utils/asyncHandler.js";
 import { Profile } from "../../../Models/profile.models.js";
 import { sendEmail } from "../../../helpers/mailer.js";
 import { uploadFileToCloudinary } from "../../../utils/cloudinary.js";
+import mongoose from "mongoose";
 
 const getProfile = asyncHandler(async (req, res) => {
-  const userId = await User.findById(req.user.profile._id)
+  const userId = await User.findById(req.user.profile._id);
 
   // Fetch profile using the username field
   const profile = await Profile.findOne({ userId })
@@ -62,18 +63,18 @@ const getCurrentUser = asyncHandler(async (req, res) => {
     .json(new apiResponse(200, userData, "Current user fetched successfully"));
 });
 
-// Get User Follow Profile
+// Get User Follow Profile by userId
 const getUserFollowProfile = asyncHandler(async (req, res) => {
-  const { username } = req.params;
+  const { userId } = req.params;
 
-  // Validate username input
-  if (!username?.trim()) {
-    throw new apiError(403, "Invalid username");
+  // Validate userId input
+  if (!mongoose.Types.ObjectId.isValid(userId)) {
+    throw new apiError(403, "Invalid user ID");
   }
 
   // Aggregate user data with followers and following counts
   const followProfile = await User.aggregate([
-    { $match: { username: username.toLowerCase() } },
+    { $match: { _id: new mongoose.Types.ObjectId(userId) } },
     {
       $lookup: {
         from: "follows",
@@ -132,4 +133,26 @@ const getUserFollowProfile = asyncHandler(async (req, res) => {
     );
 });
 
-export { getProfile, getCurrentUser, getUserFollowProfile };
+const getUserProfileById = asyncHandler(async (req, res) => {
+  const { userId } = req.params;
+
+  if (!userId) {
+    throw new apiError(400, "User ID is required");
+  }
+
+  const profile = await Profile.findOne({ user: userId })
+    .populate("user", "username email")
+    .populate("savedPost", "name")
+    .populate("follower", "name")
+    .populate("following");
+
+  if (!profile) {
+    throw new apiError(404, "Profile not found");
+  }
+
+  return res
+    .status(200)
+    .json(new apiResponse(200, profile, "User profile fetched successfully"));
+});
+
+export { getProfile, getCurrentUser, getUserFollowProfile, getUserProfileById };
