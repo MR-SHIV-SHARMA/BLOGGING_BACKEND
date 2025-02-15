@@ -6,6 +6,7 @@ import {
   getAllPosts,
   getPostById,
   deletePostById,
+  getPostsByUserId,
 } from "../../controllers/content/post.controllers.js";
 import { upload } from "../../middlewares/multer.middlewares.js";
 import verifyJWT from "../../middlewares/auth.middlewares.js";
@@ -25,5 +26,7 @@ router
   .delete(verifyJWT, deletePostById);
 
 router.route("/:postId").get(getPostById);
+
+router.route("/user/:userId/posts").get(getPostsByUserId); // New route added
 
 export default router;

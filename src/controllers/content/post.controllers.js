@@ -179,8 +179,7 @@ const createPost = asyncHandler(async (req, res, next) => {
     const mediaPath = req.files?.media?.[0]?.path;
 
     if (mediaPath) {
-      media = await uploadFileToCloudinary(mediaPath).catch(error => {
-      });
+      media = await uploadFileToCloudinary(mediaPath).catch((error) => {});
     }
 
     // Create the post
@@ -348,6 +347,33 @@ const deletePostById = asyncHandler(async (req, res) => {
     .json(new apiResponse(200, null, post, "Post deleted successfully."));
 });
 
+//
+const getPostsByUserId = asyncHandler(async (req, res) => {
+  const { userId } = req.params; // Extract userId from request params
+
+  if (!mongoose.isValidObjectId(userId)) {
+    throw new apiError(400, "Invalid user ID.");
+  }
+
+  const posts = await Post.find({ userId })
+    .populate("userId", "username fullname avatar")
+    .populate("categories", "name")
+    .populate("tags", "name")
+    .populate("comments")
+    .populate("likes")
+    .sort({ createdAt: -1 }); // Sort by newest posts first
+
+  if (!posts || posts.length === 0) {
+    return res
+      .status(404)
+      .json(new apiResponse(404, [], "No posts found for this user."));
+  }
+
+  return res
+    .status(200)
+    .json(new apiResponse(200, posts, "User posts fetched successfully."));
+});
+
 export {
   createPost,
   updatePost,
@@ -355,4 +381,5 @@ export {
   getAllPosts,
   getPostById,
   deletePostById,
+  getPostsByUserId,
 };
