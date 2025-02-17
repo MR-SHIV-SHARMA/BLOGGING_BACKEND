@@ -7,6 +7,12 @@ const notificationSchema = new Schema(
       ref: "User",
       required: true,
     },
+    actionUserId: {
+      // ✅ New field for the user performing the action
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
     message: {
       type: String,
       required: true,
@@ -18,7 +24,7 @@ const notificationSchema = new Schema(
     },
     isRead: {
       type: Boolean,
-      default: false, 
+      default: false,
     },
   },
   { timestamps: true }

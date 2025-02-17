@@ -30,7 +30,7 @@ const registerUser = asyncHandler(async (req, res) => {
     throw new apiError(422, "Please fill in all the required fields");
   }
 
-  // First check if user or profile already exists
+  // Check if user or profile already exists
   const [existedUser, existedProfile] = await Promise.all([
     User.findOne({
       $or: [{ username }, { email }],
@@ -52,7 +52,7 @@ const registerUser = asyncHandler(async (req, res) => {
     password,
   });
 
-  // Create default profile for the user
+  // ✅ Create default profile for the user (Fix: Use array for socialMedia)
   const userProfile = await Profile.create({
     user: user._id,
     username: user.username,
@@ -61,7 +61,7 @@ const registerUser = asyncHandler(async (req, res) => {
     hobbies: [],
     bio: "",
     link: "",
-    socialMedia: new Map(),
+    socialMedia: [], // ✅ Fix: Now it's an array instead of an object.
     avatar: "",
     coverImage: "",
   });

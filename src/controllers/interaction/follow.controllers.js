@@ -26,7 +26,8 @@ const followUser = asyncHandler(async (req, res) => {
 
   // Send notification to the followed user
   await sendNotification(
-    followingId,
+    followingId, // Receiver (the user being followed)
+    followerId, // Action User (the user who is following)
     `${req.user.username} started following you`,
     "follow"
   );

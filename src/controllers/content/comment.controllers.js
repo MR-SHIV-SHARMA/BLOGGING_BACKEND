@@ -11,15 +11,7 @@ const addComment = asyncHandler(async (req, res) => {
   const { content } = req.body;
   const userId = req.user._id;
 
-  console.log("Request Params:", req.params);
-  console.log("Request Body:", req.body);
-  console.log("User ID:", userId);
-
   if (!postId || !userId || !content?.trim()) {
-    console.error("Validation Error: Missing required fields");
-    console.log("postId:", postId);
-    console.log("userId:", userId);
-    console.log("content:", content);
     throw new apiError(422, "Post ID, userId, and content are required.");
   }
 
@@ -43,10 +35,10 @@ const addComment = asyncHandler(async (req, res) => {
     throw new apiError(404, "Post not found.");
   }
 
-  console.log("Post owner ID:", post.userId); // Debug logging
   // Send notification to the post owner
   await sendNotification(
-    post.userId._id,
+    post.userId._id, // Receiver (Post Owner)
+    userId, // Action User (Commenter)
     `${req.user.username} commented on your post`,
     "comment"
   );

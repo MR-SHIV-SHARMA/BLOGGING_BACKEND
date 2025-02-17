@@ -5,14 +5,18 @@ import { apiResponse } from "../../utils/apiResponse.js";
 
 // Create a notification
 const createNotification = asyncHandler(async (req, res) => {
-  const { userId, message, type } = req.body;
+  const { userId, actionUserId, message, type } = req.body;
 
-  if (!userId || !message || !type) {
-    throw new apiError(422, "User ID, message, and type are required.");
+  if (!userId || !actionUserId || !message || !type) {
+    throw new apiError(
+      422,
+      "User ID, actionUserId, message, and type are required."
+    );
   }
 
   const notification = await Notification.create({
     userId,
+    actionUserId,
     message,
     type,
   });
@@ -32,9 +36,9 @@ const getNotificationsByUser = asyncHandler(async (req, res) => {
     throw new apiError(400, "User ID is required.");
   }
 
-  const notifications = await Notification.find({ userId }).sort({
-    createdAt: -1,
-  });
+  const notifications = await Notification.find({ userId })
+    .populate("actionUserId", "username") // Populate actionUserId to get the user details
+    .sort({ createdAt: -1 });
 
   if (!notifications.length) {
     throw new apiError(404, "No notifications found for the user.");
@@ -74,24 +78,14 @@ const markAsRead = asyncHandler(async (req, res) => {
 const markAllAsRead = asyncHandler(async (req, res) => {
   const { userId } = req.params;
 
-  console.log("markAllAsRead called with userId:", userId); // Debug logging
-
   if (!userId) {
     throw new apiError(400, "User ID is required.");
   }
 
   const result = await Notification.updateMany(
-    { userId: userId, isRead: false },
+    { userId, isRead: false },
     { isRead: true }
   );
-
-  console.log("Notifications marked as read:", result); // Debug logging
-
-  const updatedNotifications = await Notification.find({
-    userId: userId,
-    isRead: true,
-  });
-  console.log("Updated notifications:", updatedNotifications); // Debug logging
 
   return res
     .status(200)
@@ -141,20 +135,29 @@ const deleteAllNotifications = asyncHandler(async (req, res) => {
 });
 
 // Function to send notification
-const sendNotification = async (userId, message, type) => {
-  console.log("sendNotification called with:", { userId, message, type }); // Debug logging
-
-  if (!userId || !message || !type) {
-    throw new apiError(422, "User ID, message, and type are required.");
-  }
-
-  const notification = await Notification.create({
+const sendNotification = async (userId, actionUserId, message, type) => {
+  console.log("sendNotification called with:", {
     userId,
+    actionUserId,
     message,
     type,
   });
 
-  console.log("Notification created:", notification); // Debug logging
+  if (!userId || !actionUserId || !message || !type) {
+    throw new apiError(
+      422,
+      "User ID, actionUserId, message, and type are required."
+    );
+  }
+
+  const notification = await Notification.create({
+    userId,
+    actionUserId,
+    message,
+    type,
+  });
+
+  console.log("Notification created:", notification);
 
   return notification;
 };

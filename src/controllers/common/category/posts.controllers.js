@@ -19,7 +19,7 @@ const getPostsByCategory = asyncHandler(async (req, res) => {
   }
 
   const posts = await Post.find({ categories: categoryId }).populate(
-    "author categories tags"
+    "categories tags"
   );
 
   return res

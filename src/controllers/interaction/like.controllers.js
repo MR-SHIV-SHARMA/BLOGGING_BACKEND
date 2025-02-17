@@ -45,10 +45,11 @@ const addLike = asyncHandler(async (req, res) => {
     }
     // Update the post to include the like reference
     await Post.findByIdAndUpdate(postId, { $push: { likes: like._id } });
-    console.log("Post owner ID:", post.userId); // Debug logging
+
     // Send notification to the post owner
     await sendNotification(
-      post.userId._id,
+      post.userId._id, // Receiver ID
+      userId, // Action User ID
       `${req.user.username} liked your post`,
       "like"
     );
@@ -60,10 +61,11 @@ const addLike = asyncHandler(async (req, res) => {
     }
     // Update the comment to include the like reference
     await Comment.findByIdAndUpdate(commentId, { $push: { likes: userId } });
-    console.log("Comment owner ID:", comment.userId); // Debug logging
+
     // Send notification to the comment owner
     await sendNotification(
-      comment.userId._id,
+      comment.userId._id, // Receiver ID
+      userId, // Action User ID
       `${req.user.username} liked your comment`,
       "like"
     );
@@ -79,14 +81,7 @@ const removeLike = asyncHandler(async (req, res) => {
   const userId = req.user._id;
   const { postId, commentId } = req.params;
 
-  console.log("Request Params:", req.params);
-  console.log("User ID:", userId);
-
   if (!userId || (!postId && !commentId)) {
-    console.error("Validation Error: Missing required fields");
-    console.log("userId:", userId);
-    console.log("postId:", postId);
-    console.log("commentId:", commentId);
     throw new apiError(
       422,
       "A valid userId and either postId or commentId are required."
@@ -105,10 +100,8 @@ const removeLike = asyncHandler(async (req, res) => {
   }
 
   if (postId) {
-    // Update the post to remove the like reference
     await Post.findByIdAndUpdate(postId, { $pull: { likes: like._id } });
   } else if (commentId) {
-    // Update the comment to remove the like reference
     await Comment.findByIdAndUpdate(commentId, { $pull: { likes: userId } });
   }
 
