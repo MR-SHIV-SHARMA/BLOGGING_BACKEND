@@ -9,17 +9,16 @@ import { uploadFileToCloudinary } from "../../../utils/cloudinary.js";
 import mongoose from "mongoose";
 
 const getProfile = asyncHandler(async (req, res) => {
-  const userId = await User.findById(req.user.profile._id);
+  const userId = req.user._id; // ✅ Fix: Now fetching the logged-in user's ID
 
-  // Fetch profile using the username field
-  const profile = await Profile.findOne({ userId })
+  // ✅ Fetch profile using the correct user ID
+  const profile = await Profile.findOne({ user: userId })
     .populate("user", "username email")
     .populate("savedPost", "name")
-    .populate("follower", "name")
-    .populate("following");
+    .populate("follower", "username") // ✅ Changed from "name" to "username"
+    .populate("following", "username"); // ✅ Changed from populating everything to only "username"
 
   if (!profile) {
-    console.error(`Profile not found for username: ${userId}`);
     throw new apiError(404, "Profile not found.");
   }
 
