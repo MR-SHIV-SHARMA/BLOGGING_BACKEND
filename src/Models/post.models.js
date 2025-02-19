@@ -8,12 +8,12 @@ const postSchema = new mongoose.Schema(
       required: true,
     },
     title: {
-      type: "String",
+      type: String,
       required: true,
       trim: true,
     },
     content: {
-      type: "String",
+      type: String,
       required: true,
     },
     categories: [
@@ -29,7 +29,7 @@ const postSchema = new mongoose.Schema(
       },
     ],
     media: {
-      type: "String",
+      type: String,
     },
     likes: [
       {
@@ -43,6 +43,10 @@ const postSchema = new mongoose.Schema(
         ref: "Comment",
       },
     ],
+    isActive: {
+      type: Boolean,
+      default: true,
+    },
   },
   { timestamps: true }
 );

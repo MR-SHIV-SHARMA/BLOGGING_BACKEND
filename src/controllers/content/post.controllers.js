@@ -182,7 +182,7 @@ const createPost = asyncHandler(async (req, res, next) => {
       media = await uploadFileToCloudinary(mediaPath).catch((error) => {});
     }
 
-    // Create the post
+    // Create the post with isActive set to true
     const post = await Post.create({
       title,
       content,
@@ -190,6 +190,7 @@ const createPost = asyncHandler(async (req, res, next) => {
       categories,
       tags: tagId ? [tagId] : [],
       userId,
+      isActive: true, // Set isActive to true by default
     });
 
     return res
@@ -203,7 +204,7 @@ const createPost = asyncHandler(async (req, res, next) => {
 // Update a post
 const updatePost = asyncHandler(async (req, res) => {
   const { postId } = req.params;
-  const { title, content } = req.body;
+  const { title, content, isActive } = req.body;
 
   if (!postId) {
     throw new apiError(400, "Post ID is required.");
@@ -214,6 +215,9 @@ const updatePost = asyncHandler(async (req, res) => {
   }
 
   const post = await Post.findById(postId);
+  if (!post) {
+    throw new apiError(404, "Post not found.");
+  }
 
   const formattedContent = formatAndSaveContent(
     content,
@@ -224,7 +228,9 @@ const updatePost = asyncHandler(async (req, res) => {
   if (title) updates.title = title;
   if (content) updates.content = formattedContent;
 
-  // Handle optional media update
+  // ✅ Ensure isActive is updated even if false
+  if (isActive !== undefined) updates.isActive = isActive;
+
   if (req.files?.media?.[0]?.path) {
     const uploadedImage = await uploadFileToCloudinary(
       req.files.media[0].path,
@@ -239,10 +245,6 @@ const updatePost = asyncHandler(async (req, res) => {
     new: true,
   });
 
-  if (!updatedPost) {
-    throw new apiError(404, "Post not found.");
-  }
-
   return res
     .status(200)
     .json(new apiResponse(200, updatedPost, "Post updated successfully."));
@@ -250,7 +252,7 @@ const updatePost = asyncHandler(async (req, res) => {
 
 // Get all posts by the logged-in user
 const getPostsByUser = asyncHandler(async (req, res) => {
-  const userId = req.user?._id; // Assuming user info is saved in req.user after authentication
+  const userId = req.user?._id;
 
   const posts = await Post.find({ userId })
     .populate("userId", "username fullname avatar")
@@ -317,24 +319,21 @@ const getPostById = asyncHandler(async (req, res) => {
 // Delete a post by ID
 const deletePostById = asyncHandler(async (req, res) => {
   const { postId } = req.params;
-  const userId = req.user?._id; // Logged-in user ID
+  const userId = req.user?._id;
 
   if (!mongoose.isValidObjectId(postId)) {
     throw new apiError(400, "Invalid post ID.");
   }
 
-  // Fetch the post and populate the userId field
   const post = await Post.findById(postId).populate("userId");
   if (!post) {
     throw new apiError(404, "Post not found.");
   }
 
-  // Ensure post has a userId field
   if (!post.userId) {
     throw new apiError(500, "Post data is corrupted. No owner found.");
   }
 
-  // Ensure only the owner can delete the post
   if (post.userId._id.toString() !== userId.toString()) {
     throw new apiError(403, "You are not authorized to delete this post.");
   }
@@ -347,9 +346,9 @@ const deletePostById = asyncHandler(async (req, res) => {
     .json(new apiResponse(200, null, post, "Post deleted successfully."));
 });
 
-//
+// Get posts by userId
 const getPostsByUserId = asyncHandler(async (req, res) => {
-  const { userId } = req.params; // Extract userId from request params
+  const { userId } = req.params;
 
   if (!mongoose.isValidObjectId(userId)) {
     throw new apiError(400, "Invalid user ID.");
@@ -361,7 +360,7 @@ const getPostsByUserId = asyncHandler(async (req, res) => {
     .populate("tags", "name")
     .populate("comments")
     .populate("likes")
-    .sort({ createdAt: -1 }); // Sort by newest posts first
+    .sort({ createdAt: -1 });
 
   if (!posts || posts.length === 0) {
     return res
