@@ -5,6 +5,7 @@ import { apiResponse } from "../../../utils/apiResponse.js";
 import { asyncHandler } from "../../../utils/asyncHandler.js";
 import { Profile } from "../../../Models/profile.models.js";
 import { sendEmail } from "../../../helpers/mailer.js";
+import { cookieOptions } from "../../../utils/cookieOptions.js";
 
 // Generate Access and Refresh Tokens
 const generateAccessTokensAndRefreshTokens = async (userId) => {
@@ -123,8 +124,8 @@ const loginUser = asyncHandler(async (req, res) => {
 
   return res
     .status(200)
-    .cookie("accessToken", accessToken, { httpOnly: true, secure: true })
-    .cookie("refreshToken", refreshToken, { httpOnly: true, secure: true })
+    .cookie("accessToken", accessToken, cookieOptions)
+    .cookie("refreshToken", refreshToken, cookieOptions)
     .json(
       new apiResponse(
         200,
@@ -142,8 +143,8 @@ const logoutUser = asyncHandler(async (req, res) => {
   );
   return res
     .status(200)
-    .clearCookie("accessToken", { httpOnly: true, secure: true })
-    .clearCookie("refreshToken", { httpOnly: true, secure: true })
+    .clearCookie("accessToken", cookieOptions)
+    .clearCookie("refreshToken", cookieOptions)
     .json(new apiResponse(200, {}, "User logged out successfully"));
 });
 
@@ -174,8 +175,8 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
 
     return res
       .status(200)
-      .cookie("accessToken", accessToken, { httpOnly: true, secure: true })
-      .cookie("refreshToken", newRefreshToken, { httpOnly: true, secure: true })
+      .cookie("accessToken", accessToken, cookieOptions)
+      .cookie("refreshToken", newRefreshToken, cookieOptions)
       .json(
         new apiResponse(
           200,
@@ -186,8 +187,8 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
   } catch (error) {
     return res
       .status(401)
-      .clearCookie("accessToken")
-      .clearCookie("refreshToken")
+      .clearCookie("accessToken", cookieOptions)
+      .clearCookie("refreshToken", cookieOptions)
       .json(new apiResponse(401, {}, "Session expired. Please log in again."));
   }
 });

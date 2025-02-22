@@ -4,6 +4,7 @@ import { apiError } from "../../../utils/apiError.js";
 import { apiResponse } from "../../../utils/apiResponse.js";
 import { asyncHandler } from "../../../utils/asyncHandler.js";
 import { sendEmail } from "../../../helpers/mailer.js";
+import { cookieOptions } from "../../../utils/cookieOptions.js";
 
 // Update Account Details
 const updateAccountDetails = asyncHandler(async (req, res) => {
@@ -49,15 +50,10 @@ const deleteUserAccount = asyncHandler(async (req, res) => {
     message: "Your account has been deactivated",
   });
 
-  const options = {
-    httpOnly: true,
-    secure: true,
-  };
-
   return res
     .status(200)
-    .clearCookie("accessToken", options)
-    .clearCookie("refreshToken", options)
+    .clearCookie("accessToken", cookieOptions)
+    .clearCookie("refreshToken", cookieOptions)
     .json(
       new apiResponse(
         200,
