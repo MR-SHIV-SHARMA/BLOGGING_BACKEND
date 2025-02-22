@@ -194,7 +194,7 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
 });
 
 const verifyEmail = asyncHandler(async (req, res) => {
-  const { token } = req.query;
+  const { token } = req.params; // ✅ Fix: Get token from path params
   if (!token) throw new apiError(400, "Token is required");
 
   try {

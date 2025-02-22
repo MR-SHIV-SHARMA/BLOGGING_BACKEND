@@ -14,7 +14,7 @@ router.route("/change-password").post(verifyJWT, changeCurrentPassword);
 router.route("/forgot-password").post(forgotPassword);
 
 router
-  .route("/reset-password")
+  .route("/reset-password/:token")
   .get(resetPasswordWithToken)
   .post(resetPasswordWithToken);
 

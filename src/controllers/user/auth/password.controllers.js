@@ -80,14 +80,13 @@ const forgotPassword = asyncHandler(async (req, res) => {
 
 // Reset Password with token
 const resetPasswordWithToken = asyncHandler(async (req, res) => {
-  // For GET request - verify token
+  const { token } = req.params;
+
+  if (!token) {
+    throw new apiError(400, "Reset token is required");
+  }
+
   if (req.method === "GET") {
-    const { token } = req.query;
-
-    if (!token) {
-      throw new apiError(400, "Reset token is required");
-    }
-
     try {
       const decoded = jwt.verify(token, process.env.VERIFICATION_TOKEN_SECRET);
       const user = await User.findOne({
@@ -110,10 +109,9 @@ const resetPasswordWithToken = asyncHandler(async (req, res) => {
 
   // For POST request - reset password
   const { newPassword } = req.body;
-  const token = req.query.token || req.body.token; // Get token from query or body
 
-  if (!token || !newPassword) {
-    throw new apiError(400, "Token and new password are required");
+  if (!newPassword) {
+    throw new apiError(400, "New password is required");
   }
 
   let decoded;

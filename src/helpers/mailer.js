@@ -64,7 +64,7 @@ export const sendEmail = async ({
             ? `<p>
                 Here's your account restoration link:
                 <br><br>
-                <a href="${process.env.DOMAIN}/api/v1/user/account/restore-account/${token}">Restore My Account</a>
+                <a href="${process.env.CORS_ORIGIN}/restore-account/${token}">Restore My Account</a>
                 <br><br>
                 This link will be valid only until ${new Date(restorationDeadline).toLocaleString()}.
                 After that, your account and all associated data will be permanently deleted.
@@ -76,15 +76,15 @@ export const sendEmail = async ({
                   If you did not request this action, please contact our support team immediately.
                 </p>`
               : `<p>
-                  <a href="${process.env.DOMAIN}/api/v1/auth/auth/${
-                    emailType === "VERIFY" ? "verify-email" : "reset-password"
-                  }?token=${token}">Click here</a> 
-                  to ${emailType === "VERIFY" ? "verify your email" : "reset your password"} 
-                  or copy and paste the link below in your browser.
+                  <a href="${process.env.CORS_ORIGIN}/${emailType === "VERIFY" ? "verify-email" : "reset-password"
+              }/${token}">
+                   Click here
+                  </a>
+                    to ${emailType === "VERIFY" ? "verify your email" : "reset your password"}
+                    or copy and paste the link below in your browser.
                   <br>
-                  ${process.env.DOMAIN}/api/v1/auth/auth/${
-                    emailType === "VERIFY" ? "verify-email" : "reset-password"
-                  }?token=${token}
+                  ${process.env.CORS_ORIGIN}/${emailType === "VERIFY" ? "verify-email" : "reset-password"
+              }/${token}
                 </p>`,
     };
 

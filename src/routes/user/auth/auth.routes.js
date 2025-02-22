@@ -18,6 +18,6 @@ router.route("/logout").post(verifyJWT, logoutUser);
 
 router.route("/refresh-token").get(refreshAccessToken);
 
-router.route("/verify-email").get(verifyEmail);
+router.route("/verify-email/:token").get(verifyEmail);
 
 export default router;
