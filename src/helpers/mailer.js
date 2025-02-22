@@ -29,8 +29,8 @@ export const sendEmail = async ({
       port: 2525,
       secure: false,
       auth: {
-        user: "d435d26f63d03b",
-        pass: "64eea3d9831444",
+        user: "e7eafcf848c684",
+        pass: "daa7c8b46e8a0e",
       },
     });
 
@@ -54,7 +54,7 @@ export const sendEmail = async ({
               <br><br>
               If you wish to restore your account within the next 30 days, you can do so by visiting:
               <br>
-              ${process.env.DOMAIN}/restore-account
+              ${process.env.DOMAIN}/api/v1/user/account/restore-account
               <br><br>
               After 30 days, your account and all associated data will be permanently deleted.
               <br><br>
@@ -64,7 +64,7 @@ export const sendEmail = async ({
             ? `<p>
                 Here's your account restoration link:
                 <br><br>
-                <a href="${process.env.DOMAIN}/api/v1/users/restore-account/${token}">Restore My Account</a>
+                <a href="${process.env.DOMAIN}/api/v1/user/account/restore-account/${token}">Restore My Account</a>
                 <br><br>
                 This link will be valid only until ${new Date(restorationDeadline).toLocaleString()}.
                 After that, your account and all associated data will be permanently deleted.
@@ -76,13 +76,13 @@ export const sendEmail = async ({
                   If you did not request this action, please contact our support team immediately.
                 </p>`
               : `<p>
-                  <a href="${process.env.DOMAIN}/api/v1/users/${
+                  <a href="${process.env.DOMAIN}/api/v1/auth/auth/${
                     emailType === "VERIFY" ? "verify-email" : "reset-password"
                   }?token=${token}">Click here</a> 
                   to ${emailType === "VERIFY" ? "verify your email" : "reset your password"} 
                   or copy and paste the link below in your browser.
                   <br>
-                  ${process.env.DOMAIN}/api/v1/users/${
+                  ${process.env.DOMAIN}/api/v1/auth/auth/${
                     emailType === "VERIFY" ? "verify-email" : "reset-password"
                   }?token=${token}
                 </p>`,

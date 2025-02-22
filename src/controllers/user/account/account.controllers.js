@@ -42,12 +42,12 @@ const deleteUserAccount = asyncHandler(async (req, res) => {
   await user.save();
 
   // Send deletion confirmation email
-  // await sendEmail({
-  //   email: userEmail,
-  //   emailType: "ACCOUNT_DELETED",
-  //   userId: user._id,
-  //   message: "Your account has been deactivated",
-  // });
+  await sendEmail({
+    email: userEmail,
+    emailType: "ACCOUNT_DELETED",
+    userId: user._id,
+    message: "Your account has been deactivated",
+  });
 
   const options = {
     httpOnly: true,
